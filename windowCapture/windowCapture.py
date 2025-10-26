@@ -159,22 +159,47 @@ class ControlWindow(QtWidgets.QWidget):
                             QtCore.Qt.WindowStaysOnTopHint |
                             QtCore.Qt.X11BypassWindowManagerHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        # 位置を調整して確実に表示
-        self.setGeometry(overlay.x() + 40, overlay.y() + 40, 36, 36)
-        self.setStyleSheet("background-color: rgba(255,60,60,220); border-radius:5px;")
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
 
-        # 表示・最前面化を確実に適用
-        QtCore.QTimer.singleShot(200, self.raise_to_top)
+        # 表示矩形を操作ウィンドウの近くに配置
+        target_pos = overlay.frameGeometry().topLeft() + QtCore.QPoint(40, 40)
+        self.setGeometry(QtCore.QRect(target_pos, QtCore.QSize(36, 36)))
+        self.setFixedSize(36, 36)
+
+        # 実際に描画される赤い四角は子ウィジェットとして作成
+        self.square = QtWidgets.QFrame(self)
+        self.square.setObjectName("controlSquare")
+        self.square.setGeometry(self.rect())
+        self.square.setStyleSheet(
+            "#controlSquare {"
+            "background-color: rgba(255,60,60,220);"
+            "border-radius: 5px;"
+            "}"
+        )
+
+        # 最前面化を維持するため、一定間隔で SetWindowPos を呼び出す
+        self._raise_timer = QtCore.QTimer(self)
+        self._raise_timer.setInterval(750)
+        self._raise_timer.timeout.connect(self.raise_to_top)
+        self._raise_timer.start()
+        QtCore.QTimer.singleShot(0, self.raise_to_top)
 
     def raise_to_top(self):
-        self.show()
+        if not self.isVisible():
+            self.show()
         self.raise_()
-        self.activateWindow()
         hwnd = int(self.winId())
-        ctypes.windll.user32.SetWindowPos(hwnd, win32con.HWND_TOPMOST,
-                                          0, 0, 0, 0,
-                                          0x0001 | 0x0002)
-        print("[UI] ControlWindow raised to TOPMOST (should now be visible)")
+        ctypes.windll.user32.SetWindowPos(
+            hwnd,
+            win32con.HWND_TOPMOST,
+            0,
+            0,
+            0,
+            0,
+            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE,
+        )
+        # 透明ウィンドウは描画更新を促さないと表示されない場合があるため
+        self.square.update()
 
     def mousePressEvent(self, e):
         if e.button() == QtCore.Qt.LeftButton:
@@ -182,6 +207,16 @@ class ControlWindow(QtWidgets.QWidget):
             self.overlay.set_click_through(False)
             QtCore.QTimer.singleShot(1500, lambda: self.overlay.set_click_through(True))
             print("🟢 1.5秒後に再び透過ON")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "square"):
+            self.square.setGeometry(self.rect())
+
+    def closeEvent(self, event):
+        if hasattr(self, "_raise_timer") and self._raise_timer.isActive():
+            self._raise_timer.stop()
+        super().closeEvent(event)
 
 # =======================================================
 # Window list & entry point
