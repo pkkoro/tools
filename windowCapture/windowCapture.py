@@ -151,6 +151,10 @@ class Overlay(QtWidgets.QWidget):
 # Control Window (red square, independent, clickable)
 # =======================================================
 class ControlWindow(QtWidgets.QWidget):
+    dragStarted = QtCore.pyqtSignal(QtCore.QPoint)
+    dragUpdated = QtCore.pyqtSignal(QtCore.QPoint)
+    dragFinished = QtCore.pyqtSignal(QtCore.QPoint)
+
     def __init__(self, overlay):
         super().__init__()
         self.overlay = overlay
@@ -203,10 +207,44 @@ class ControlWindow(QtWidgets.QWidget):
 
     def mousePressEvent(self, e):
         if e.button() == QtCore.Qt.LeftButton:
-            print("🟥 赤い四角クリック！ Overlay透過解除中...")
-            self.overlay.set_click_through(False)
-            QtCore.QTimer.singleShot(1500, lambda: self.overlay.set_click_through(True))
-            print("🟢 1.5秒後に再び透過ON")
+            self._dragging = True
+            self._press_global = e.globalPos()
+            print("🟥 操作用ドラッグ開始")
+            self.dragStarted.emit(self._press_global)
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        if self._dragging and (e.buttons() & QtCore.Qt.LeftButton):
+            delta = e.globalPos() - self._press_global
+            self.dragUpdated.emit(delta)
+        super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        if self._dragging and e.button() == QtCore.Qt.LeftButton:
+            self._dragging = False
+            delta = e.globalPos() - self._press_global
+            print("🟥 操作用ドラッグ終了")
+            self.dragFinished.emit(delta)
+        super().mouseReleaseEvent(e)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "square"):
+            self.square.setGeometry(self.rect())
+
+    def closeEvent(self, event):
+        if hasattr(self, "_raise_timer") and self._raise_timer.isActive():
+            self._raise_timer.stop()
+        super().closeEvent(event)
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QBrush(self._bg_color))
+        rect = self.rect()
+        painter.drawRoundedRect(rect, self._border_radius, self._border_radius)
+        painter.end()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
