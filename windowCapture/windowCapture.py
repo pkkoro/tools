@@ -240,6 +240,15 @@ class ControlWindow(QtWidgets.QWidget):
             self._raise_timer.stop()
         super().closeEvent(event)
 
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QBrush(self._bg_color))
+        rect = self.rect()
+        painter.drawRoundedRect(rect, self._border_radius, self._border_radius)
+        painter.end()
+
 # =======================================================
 # Window list & entry point
 # =======================================================
