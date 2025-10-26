@@ -188,9 +188,6 @@ class ControlWindow(QtWidgets.QWidget):
         self._raise_timer.start()
         QtCore.QTimer.singleShot(0, self.raise_to_top)
 
-        self._dragging = False
-        self._press_global = QtCore.QPoint()
-
     def raise_to_top(self):
         if not self.isVisible():
             self.show()
@@ -248,6 +245,16 @@ class ControlWindow(QtWidgets.QWidget):
         rect = self.rect()
         painter.drawRoundedRect(rect, self._border_radius, self._border_radius)
         painter.end()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "square"):
+            self.square.setGeometry(self.rect())
+
+    def closeEvent(self, event):
+        if hasattr(self, "_raise_timer") and self._raise_timer.isActive():
+            self._raise_timer.stop()
+        super().closeEvent(event)
 
 # =======================================================
 # Window list & entry point
