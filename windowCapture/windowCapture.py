@@ -97,6 +97,8 @@ class Overlay(QtWidgets.QWidget):
                             QtCore.Qt.Tool |
                             QtCore.Qt.WindowStaysOnTopHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        # 常にユーザー操作をターゲットアプリへ通す
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
         self.setGeometry(100, 100, 800, 480)
 
         # キャプチャ開始
@@ -112,7 +114,6 @@ class Overlay(QtWidgets.QWidget):
         self.ctrl_window = ControlWindow(self)
         self.ctrl_window.show()
         self.ctrl_window.raise_()
-        self.ctrl_window.activateWindow()
         print("[UI] ControlWindow created and raised to front")
 
     def set_click_through(self, enable: bool):
@@ -151,6 +152,10 @@ class Overlay(QtWidgets.QWidget):
 # Control Window (red square, independent, clickable)
 # =======================================================
 class ControlWindow(QtWidgets.QWidget):
+    dragStarted = QtCore.pyqtSignal(QtCore.QPoint)
+    dragUpdated = QtCore.pyqtSignal(QtCore.QPoint)
+    dragFinished = QtCore.pyqtSignal(QtCore.QPoint)
+
     def __init__(self, overlay):
         super().__init__()
         self.overlay = overlay
@@ -159,29 +164,92 @@ class ControlWindow(QtWidgets.QWidget):
                             QtCore.Qt.WindowStaysOnTopHint |
                             QtCore.Qt.X11BypassWindowManagerHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        # 位置を調整して確実に表示
-        self.setGeometry(overlay.x() + 40, overlay.y() + 40, 36, 36)
-        self.setStyleSheet("background-color: rgba(255,60,60,220); border-radius:5px;")
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating)
 
-        # 表示・最前面化を確実に適用
-        QtCore.QTimer.singleShot(200, self.raise_to_top)
+        # 表示矩形を操作ウィンドウの近くに配置
+        target_pos = overlay.frameGeometry().topLeft() + QtCore.QPoint(40, 40)
+        self.setGeometry(QtCore.QRect(target_pos, QtCore.QSize(36, 36)))
+        self.setFixedSize(36, 36)
+
+        # 実際に描画される赤い四角は子ウィジェットとして作成
+        self.square = QtWidgets.QFrame(self)
+        self.square.setObjectName("controlSquare")
+        self.square.setGeometry(self.rect())
+        self.square.setStyleSheet(
+            "#controlSquare {"
+            "background-color: rgba(255,60,60,220);"
+            "border-radius: 5px;"
+            "}"
+        )
+
+        # 最前面化を維持するため、一定間隔で SetWindowPos を呼び出す
+        self._raise_timer = QtCore.QTimer(self)
+        self._raise_timer.setInterval(750)
+        self._raise_timer.timeout.connect(self.raise_to_top)
+        self._raise_timer.start()
+        QtCore.QTimer.singleShot(0, self.raise_to_top)
+
+        self._dragging = False
+        self._press_global = QtCore.QPoint()
+        self.setFocusPolicy(QtCore.Qt.NoFocus)
 
     def raise_to_top(self):
-        self.show()
+        if not self.isVisible():
+            self.show()
         self.raise_()
-        self.activateWindow()
         hwnd = int(self.winId())
-        ctypes.windll.user32.SetWindowPos(hwnd, win32con.HWND_TOPMOST,
-                                          0, 0, 0, 0,
-                                          0x0001 | 0x0002)
-        print("[UI] ControlWindow raised to TOPMOST (should now be visible)")
+        ctypes.windll.user32.SetWindowPos(
+            hwnd,
+            win32con.HWND_TOPMOST,
+            0,
+            0,
+            0,
+            0,
+            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE,
+        )
+        self.ensure_clickable()
+        # 透明ウィンドウは描画更新を促さないと表示されない場合があるため
+        self.square.update()
+
+    def ensure_clickable(self):
+        hwnd = int(self.winId())
+        GWL_EXSTYLE = -20
+        WS_EX_TRANSPARENT = 0x20
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        if style & WS_EX_TRANSPARENT:
+            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style & ~WS_EX_TRANSPARENT)
 
     def mousePressEvent(self, e):
         if e.button() == QtCore.Qt.LeftButton:
-            print("🟥 赤い四角クリック！ Overlay透過解除中...")
-            self.overlay.set_click_through(False)
-            QtCore.QTimer.singleShot(1500, lambda: self.overlay.set_click_through(True))
-            print("🟢 1.5秒後に再び透過ON")
+            self._dragging = True
+            self._press_global = e.globalPos()
+            print("🟥 操作用ドラッグ開始")
+            self.dragStarted.emit(self._press_global)
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        if self._dragging and (e.buttons() & QtCore.Qt.LeftButton):
+            delta = e.globalPos() - self._press_global
+            self.dragUpdated.emit(delta)
+        super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        if self._dragging and e.button() == QtCore.Qt.LeftButton:
+            self._dragging = False
+            delta = e.globalPos() - self._press_global
+            print("🟥 操作用ドラッグ終了")
+            self.dragFinished.emit(delta)
+        super().mouseReleaseEvent(e)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "square"):
+            self.square.setGeometry(self.rect())
+
+    def closeEvent(self, event):
+        if hasattr(self, "_raise_timer") and self._raise_timer.isActive():
+            self._raise_timer.stop()
+        super().closeEvent(event)
 
 # =======================================================
 # Window list & entry point
