@@ -97,6 +97,8 @@ class Overlay(QtWidgets.QWidget):
                             QtCore.Qt.Tool |
                             QtCore.Qt.WindowStaysOnTopHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        # 常にユーザー操作をターゲットアプリへ通す
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
         self.setGeometry(100, 100, 800, 480)
 
         # キャプチャ開始
@@ -112,7 +114,6 @@ class Overlay(QtWidgets.QWidget):
         self.ctrl_window = ControlWindow(self)
         self.ctrl_window.show()
         self.ctrl_window.raise_()
-        self.ctrl_window.activateWindow()
         print("[UI] ControlWindow created and raised to front")
 
     def set_click_through(self, enable: bool):
@@ -190,6 +191,7 @@ class ControlWindow(QtWidgets.QWidget):
 
         self._dragging = False
         self._press_global = QtCore.QPoint()
+        self.setFocusPolicy(QtCore.Qt.NoFocus)
 
     def raise_to_top(self):
         if not self.isVisible():
@@ -205,8 +207,17 @@ class ControlWindow(QtWidgets.QWidget):
             0,
             win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE,
         )
+        self.ensure_clickable()
         # 透明ウィンドウは描画更新を促さないと表示されない場合があるため
         self.square.update()
+
+    def ensure_clickable(self):
+        hwnd = int(self.winId())
+        GWL_EXSTYLE = -20
+        WS_EX_TRANSPARENT = 0x20
+        style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+        if style & WS_EX_TRANSPARENT:
+            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style & ~WS_EX_TRANSPARENT)
 
     def mousePressEvent(self, e):
         if e.button() == QtCore.Qt.LeftButton:
@@ -239,15 +250,6 @@ class ControlWindow(QtWidgets.QWidget):
         if hasattr(self, "_raise_timer") and self._raise_timer.isActive():
             self._raise_timer.stop()
         super().closeEvent(event)
-
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.setPen(QtCore.Qt.NoPen)
-        painter.setBrush(QtGui.QBrush(self._bg_color))
-        rect = self.rect()
-        painter.drawRoundedRect(rect, self._border_radius, self._border_radius)
-        painter.end()
 
 # =======================================================
 # Window list & entry point
