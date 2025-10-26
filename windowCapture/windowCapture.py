@@ -159,9 +159,13 @@ class ControlWindow(QtWidgets.QWidget):
                             QtCore.Qt.WindowStaysOnTopHint |
                             QtCore.Qt.X11BypassWindowManagerHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        self.setAttribute(QtCore.Qt.WA_NoSystemBackground, False)
+        self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         # 位置を調整して確実に表示
         self.setGeometry(overlay.x() + 40, overlay.y() + 40, 36, 36)
-        self.setStyleSheet("background-color: rgba(255,60,60,220); border-radius:5px;")
+        self.setFixedSize(36, 36)
+        self._bg_color = QtGui.QColor(255, 60, 60, 220)
+        self._border_radius = 5
 
         # 表示・最前面化を確実に適用
         QtCore.QTimer.singleShot(200, self.raise_to_top)
@@ -182,6 +186,15 @@ class ControlWindow(QtWidgets.QWidget):
             self.overlay.set_click_through(False)
             QtCore.QTimer.singleShot(1500, lambda: self.overlay.set_click_through(True))
             print("🟢 1.5秒後に再び透過ON")
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QBrush(self._bg_color))
+        rect = self.rect()
+        painter.drawRoundedRect(rect, self._border_radius, self._border_radius)
+        painter.end()
 
 # =======================================================
 # Window list & entry point
