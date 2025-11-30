@@ -1,0 +1,25 @@
+# AllInOneCalendar Task Prototype
+
+This is a lightweight Flutter prototype for the AllInOneCalendar iOS app focusing on task management. The app keeps tasks in-memory and showcases the UX for adding, editing, completing, and deleting tasks.
+
+## Features
+- Create tasks with title, optional notes, and optional due date.
+- Edit or delete existing tasks via swipe-to-delete or edit action.
+- Toggle completion with a checkbox that visually strikes through completed tasks.
+- Minimal Material 3 styling suitable for iOS with Cupertino icons available.
+
+## Getting Started
+1. Ensure Flutter (3.13+) is installed and an iOS simulator or device is available.
+2. Fetch dependencies:
+   ```sh
+   flutter pub get
+   ```
+3. Run the app on iOS:
+   ```sh
+   flutter run
+   ```
+
+## Next Steps
+- Persist tasks locally (e.g., `shared_preferences` or SQLite).
+- Add schedule and weight management modules to expand toward the full AllInOneCalendar vision.
+- Sync tasks with a backend for multi-device support.
