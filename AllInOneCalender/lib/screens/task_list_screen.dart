@@ -124,6 +124,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                           _currentMonthStart = _startOfMonth(day);
                                         })
                                     : null,
+                                onAdd: day != null
+                                    ? () => _openComposerForDay(context, _startOfDay(day))
+                                    : null,
                                 tasks: day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
                               );
                             },
@@ -185,7 +188,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
     );
   }
 
-  void _openComposer(BuildContext context, {Task? task}) {
+  void _openComposerForDay(BuildContext context, DateTime date) {
+    setState(() {
+      _selectedDate = date;
+      _currentMonthStart = _startOfMonth(date);
+    });
+    _openComposer(context, initialDate: date);
+  }
+
+  void _openComposer(BuildContext context, {Task? task, DateTime? initialDate}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -195,7 +206,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ),
         child: TaskFormSheet(
           task: task,
-          initialDate: _selectedDate,
+          initialDate: initialDate ?? _selectedDate,
         ),
       ),
     );
@@ -247,12 +258,14 @@ class _DayCell extends StatelessWidget {
     required this.tasks,
     this.isSelected = false,
     this.onTap,
+    this.onAdd,
   });
 
   final DateTime? date;
   final List<Task> tasks;
   final bool isSelected;
   final VoidCallback? onTap;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -310,23 +323,90 @@ class _DayCell extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              ...visibleTasks.map(
-                (task) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Text(
-                    '• ${task.title}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall,
-                  ),
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    ...visibleTasks.map(
+                      (task) => _TaskPreviewTile(label: task.title),
+                    ),
+                    _AddPreviewTile(onTap: onAdd),
+                  ],
                 ),
               ),
               if (remaining > 0)
-                Text(
-                  '…他${remaining}件',
-                  style: theme.textTheme.labelSmall,
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '…他${remaining}件',
+                    style: theme.textTheme.labelSmall,
+                  ),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TaskPreviewTile extends StatelessWidget {
+  const _TaskPreviewTile({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 28, maxWidth: 120),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ),
+    );
+  }
+}
+
+class _AddPreviewTile extends StatelessWidget {
+  const _AddPreviewTile({this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 28, maxWidth: 120),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.add,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
       ),
