@@ -144,7 +144,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '日付のマスに最大5件まで登録済みタスクが表示されます',
+                                    '日付のマスに最大4件のタスクと[+]で合計5枠まで表示されます',
                                     style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
@@ -277,7 +277,9 @@ class _DayCell extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
-    final visibleTasks = tasks.take(5).toList();
+    const maxPreviewItems = 5; // include [+]
+    final availableTaskSlots = math.max(0, maxPreviewItems - 1);
+    final visibleTasks = tasks.take(availableTaskSlots).toList();
     final remaining = tasks.length - visibleTasks.length;
 
     return GestureDetector(
