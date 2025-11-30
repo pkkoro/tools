@@ -1,0 +1,16 @@
+# Flutter & Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.migrated_modules
+.pub-cache/
+build/
+# iOS
+**/DerivedData/
+**/Pods/
+**/.symlinks/
+
+# IDE
+.vscode/
+.idea/
