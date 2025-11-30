@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
@@ -12,19 +14,27 @@ class TaskListScreen extends StatefulWidget {
 
 class _TaskListScreenState extends State<TaskListScreen> {
   late DateTime _selectedDate;
+  late DateTime _currentMonthStart;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = _startOfDay(DateTime.now());
+    _currentMonthStart = _startOfMonth(_selectedDate);
   }
 
   @override
   Widget build(BuildContext context) {
     final tasks = context.watch<TaskState>().tasks;
-    final tasksForDay = tasks
-        .where((task) => task.dueDate != null && _isSameDay(task.dueDate!, _selectedDate))
-        .toList();
+    final tasksByDay = <DateTime, List<Task>>{};
+    for (final task in tasks) {
+      if (task.dueDate == null) continue;
+      final dayKey = _startOfDay(task.dueDate!);
+      tasksByDay.putIfAbsent(dayKey, () => []).add(task);
+    }
+
+    final monthDays = _monthDays;
+    final tasksForDay = tasksByDay[_selectedDate] ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -58,13 +68,65 @@ class _TaskListScreenState extends State<TaskListScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CalendarDatePicker(
-                            initialDate: _selectedDate,
-                            firstDate: DateTime(_selectedDate.year - 1),
-                            lastDate: DateTime(_selectedDate.year + 2),
-                            onDateChanged: (date) => setState(() {
-                              _selectedDate = _startOfDay(date);
-                            }),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _changeMonth(-1),
+                                    icon: const Icon(Icons.chevron_left),
+                                  ),
+                                  Text(
+                                    '${_currentMonthStart.year}年 ${_currentMonthStart.month}月',
+                                    style: Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _changeMonth(1),
+                                    icon: const Icon(Icons.chevron_right),
+                                  ),
+                                ],
+                              ),
+                              Chip(
+                                label: Text('${tasksForDay.length}件'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: const [
+                              Expanded(child: Center(child: Text('日'))),
+                              Expanded(child: Center(child: Text('月'))),
+                              Expanded(child: Center(child: Text('火'))),
+                              Expanded(child: Center(child: Text('水'))),
+                              Expanded(child: Center(child: Text('木'))),
+                              Expanded(child: Center(child: Text('金'))),
+                              Expanded(child: Center(child: Text('土'))),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 7,
+                              childAspectRatio: 1,
+                            ),
+                            itemCount: monthDays.length,
+                            itemBuilder: (context, index) {
+                              final day = monthDays[index];
+                              return _DayCell(
+                                date: day,
+                                isSelected: day != null && _isSameDay(day, _selectedDate),
+                                onTap: day != null
+                                    ? () => setState(() {
+                                          _selectedDate = _startOfDay(day);
+                                          _currentMonthStart = _startOfMonth(day);
+                                        })
+                                    : null,
+                                tasks: day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
+                              );
+                            },
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -79,24 +141,17 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '空のカレンダーに日付ごとのタスクを積み上げられます',
+                                    '日付のマスに最大5件まで登録済みタスクが表示されます',
                                     style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
-                              Chip(
-                                label: Text('${tasksForDay.length}件'),
+                              FilledButton.tonalIcon(
+                                onPressed: () => _openComposer(context),
+                                icon: const Icon(Icons.add),
+                                label: const Text('この日に追加'),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: FilledButton.tonalIcon(
-                              onPressed: () => _openComposer(context),
-                              icon: const Icon(Icons.add),
-                              label: const Text('この日に追加'),
-                            ),
                           ),
                         ],
                       ),
@@ -152,6 +207,130 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   DateTime _startOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _startOfMonth(DateTime date) {
+    return DateTime(date.year, date.month);
+  }
+
+  void _changeMonth(int delta) {
+    final newMonth = DateTime(_currentMonthStart.year, _currentMonthStart.month + delta, 1);
+    final lastDay = DateTime(newMonth.year, newMonth.month + 1, 0).day;
+    final safeDay = math.min(_selectedDate.day, lastDay);
+    setState(() {
+      _currentMonthStart = newMonth;
+      _selectedDate = _startOfDay(DateTime(newMonth.year, newMonth.month, safeDay));
+    });
+  }
+
+  List<DateTime?> get _monthDays {
+    final firstDay = _currentMonthStart;
+    final daysInMonth = DateTime(firstDay.year, firstDay.month + 1, 0).day;
+    final leadingEmptySlots = firstDay.weekday % 7;
+
+    final days = <DateTime?>[];
+    days.addAll(List<DateTime?>.filled(leadingEmptySlots, null));
+    for (var i = 0; i < daysInMonth; i++) {
+      days.add(DateTime(firstDay.year, firstDay.month, i + 1));
+    }
+    final remainder = days.length % 7;
+    if (remainder != 0) {
+      days.addAll(List<DateTime?>.filled(7 - remainder, null));
+    }
+    return days;
+  }
+}
+
+class _DayCell extends StatelessWidget {
+  const _DayCell({
+    required this.date,
+    required this.tasks,
+    this.isSelected = false,
+    this.onTap,
+  });
+
+  final DateTime? date;
+  final List<Task> tasks;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (date == null) {
+      return const AspectRatio(
+        aspectRatio: 1,
+        child: SizedBox.shrink(),
+      );
+    }
+
+    final theme = Theme.of(context);
+    final visibleTasks = tasks.take(5).toList();
+    final remaining = tasks.length - visibleTasks.length;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? theme.colorScheme.primaryContainer
+                : theme.colorScheme.surfaceVariant,
+            border: Border.all(
+              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    '${date!.day}',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  if (tasks.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${tasks.length}',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ...visibleTasks.map(
+                (task) => Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    '• ${task.title}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              ),
+              if (remaining > 0)
+                Text(
+                  '…他${remaining}件',
+                  style: theme.textTheme.labelSmall,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

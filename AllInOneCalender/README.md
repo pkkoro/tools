@@ -3,8 +3,8 @@
 This is a lightweight Flutter prototype for the AllInOneCalendar iOS app focusing on calendar-based task management. The app keeps tasks in-memory, lets you pick a date from a calendar, and showcases the UX for adding, editing, completing, and deleting tasks on that day.
 
 ## Features
-- Calendar-first home screen lets you pick a date on an empty calendar and register tasks to that day.
-- Create tasks with title, optional notes, and an auto-filled due date from the selected calendar day that also shows in the task list.
+- Calendar-first home screen with a square day grid that shows up to five tasks directly in each date cell.
+- Create tasks with title, optional notes, and an auto-filled due date from the selected calendar day that also shows in the task list and inside the calendar cells.
 - Edit or delete existing tasks via swipe-to-delete or edit action.
 - Toggle completion with a checkbox that visually strikes through completed tasks.
 - Minimal Material 3 styling suitable for iOS with Cupertino icons available.
