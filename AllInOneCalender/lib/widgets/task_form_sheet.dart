@@ -4,9 +4,11 @@ import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 
 class TaskFormSheet extends StatefulWidget {
-  const TaskFormSheet({super.key, this.task});
+  const TaskFormSheet({super.key, this.task, this.initialDate});
 
   final Task? task;
+  final DateTime? initialDate;
+in
 
   @override
   State<TaskFormSheet> createState() => _TaskFormSheetState();
@@ -23,7 +25,8 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     super.initState();
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _notesController = TextEditingController(text: widget.task?.notes ?? '');
-    _dueDate = widget.task?.dueDate;
+    _dueDate = widget.task?.dueDate ?? widget.initialDate;
+ain
   }
 
   @override
@@ -118,7 +121,8 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     final newDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: now,
+      firstDate: DateTime(now.year - 1),
+ main
       lastDate: DateTime(now.year + 3),
     );
     if (newDate == null) return;
@@ -130,12 +134,14 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     final taskState = context.read<TaskState>();
     final isEditing = widget.task != null;
     final id = widget.task?.id ?? const Uuid().v4();
+    final dueDate = _dueDate ?? widget.initialDate ?? DateTime.now();
 
     final task = Task(
       id: id,
       title: _titleController.text.trim(),
       notes: _notesController.text.trim(),
-      dueDate: _dueDate,
+      dueDate: dueDate,
+
       isCompleted: widget.task?.isCompleted ?? false,
     );
 
