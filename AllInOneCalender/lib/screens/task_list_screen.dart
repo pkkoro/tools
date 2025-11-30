@@ -26,6 +26,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
         .where((task) => task.dueDate != null && _isSameDay(task.dueDate!, _selectedDate))
         .toList();
 
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('タスク管理'),
@@ -36,7 +37,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
           )
         ],
       ),
-      body: Column(
+     body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -88,6 +89,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
           ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openComposer(context),
         label: const Text('追加'),
@@ -97,6 +99,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   }
 
   void _openComposer(BuildContext context, {Task? task}) {
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -126,6 +129,7 @@ class _TaskTile extends StatelessWidget {
 
   final Task task;
   final VoidCallback onEdit;
+
 
   @override
   Widget build(BuildContext context) {
@@ -212,6 +216,7 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.selectedDate});
 
   final DateTime selectedDate;
+
 
   @override
   Widget build(BuildContext context) {

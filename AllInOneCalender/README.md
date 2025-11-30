@@ -5,6 +5,7 @@ This is a lightweight Flutter prototype for the AllInOneCalendar iOS app focusin
 ## Features
 - Calendar picker drives the selected day for viewing/adding tasks.
 - Create tasks with title, optional notes, and an auto-filled due date from the selected calendar day that also shows in the task list.
+
 - Edit or delete existing tasks via swipe-to-delete or edit action.
 - Toggle completion with a checkbox that visually strikes through completed tasks.
 - Minimal Material 3 styling suitable for iOS with Cupertino icons available.
