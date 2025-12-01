@@ -13,6 +13,8 @@ class TaskListScreen extends StatefulWidget {
 }
 
 class _TaskListScreenState extends State<TaskListScreen> {
+  static const String _appVersion = 'v0.1.0';
+
   late DateTime _selectedDate;
   late DateTime _currentMonthStart;
 
@@ -38,7 +40,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('タスク管理'),
+        title: Row(
+          children: const [
+            Text('タスク管理'),
+            SizedBox(width: 8),
+            Chip(label: Text(_appVersion)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_task),
@@ -62,7 +70,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                    color: Colors.yellow.shade100,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -291,11 +299,9 @@ class _DayCell extends StatelessWidget {
           margin: const EdgeInsets.all(4),
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.primaryContainer
-                : theme.colorScheme.surfaceVariant,
+            color: isSelected ? Colors.amber.shade200 : Colors.yellow.shade200,
             border: Border.all(
-              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+              color: isSelected ? theme.colorScheme.primary : Colors.amber.shade300,
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(12),
