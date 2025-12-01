@@ -9,6 +9,7 @@ This is a lightweight Flutter prototype for the AllInOneCalendar iOS app focusin
 - Toggle completion with a checkbox that visually strikes through completed tasks.
 - Minimal Material 3 styling suitable for iOS with Cupertino icons available.
 - The current prototype version (v0.1.0) is visible in the app bar for quick reference.
+- Responsive layout that keeps the calendar and task list stacked on phones but splits into side-by-side panels with centered, width-constrained cards and sheets for Flutter web.
 
 ## Getting Started
 1. Ensure Flutter (3.13+) is installed and an iOS simulator or device is available.

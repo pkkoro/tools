@@ -55,9 +55,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 900;
+
+            final calendarSection = Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,130 +69,76 @@ class _TaskListScreenState extends State<TaskListScreen> {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                    color: Colors.yellow.shade100,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  IconButton(
-                                    onPressed: () => _changeMonth(-1),
-                                    icon: const Icon(Icons.chevron_left),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  Text(
-                                    '${_currentMonthStart.year}年 ${_currentMonthStart.month}月',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
-                                  ),
-                                  IconButton(
-                                    onPressed: () => _changeMonth(1),
-                                    icon: const Icon(Icons.chevron_right),
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                ],
-                              ),
-                              Chip(
-                                label: Text('${tasksForDay.length}件'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: const [
-                              Expanded(child: Center(child: Text('日', style: TextStyle(fontSize: 11)))),
-                              Expanded(child: Center(child: Text('月', style: TextStyle(fontSize: 11)))),
-                              Expanded(child: Center(child: Text('火', style: TextStyle(fontSize: 11)))),
-                              Expanded(child: Center(child: Text('水', style: TextStyle(fontSize: 11)))),
-                              Expanded(child: Center(child: Text('木', style: TextStyle(fontSize: 11)))),
-                              Expanded(child: Center(child: Text('金', style: TextStyle(fontSize: 11)))),
-                              Expanded(child: Center(child: Text('土', style: TextStyle(fontSize: 11)))),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 7,
-                              childAspectRatio: 1.18,
-                            ),
-                            itemCount: monthDays.length,
-                            itemBuilder: (context, index) {
-                              final day = monthDays[index];
-                              return _DayCell(
-                                date: day,
-                                isSelected: day != null && _isSameDay(day, _selectedDate),
-                                onTap: day != null
-                                    ? () => setState(() {
-                                          _selectedDate = _startOfDay(day);
-                                          _currentMonthStart = _startOfMonth(day);
-                                        })
-                                    : null,
-                                onAdd: day != null
-                                    ? () => _openComposerForDay(context, _startOfDay(day))
-                                    : null,
-                                tasks: day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${_selectedDate.year}/${_selectedDate.month}/${_selectedDate.day} のタスク',
-                                    style: Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '日付のマスに最大4件のタスクと[+]で合計5枠まで表示されます',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                              FilledButton.tonalIcon(
-                                onPressed: () => _openComposer(context),
-                                icon: const Icon(Icons.add),
-                                label: const Text('この日に追加'),
-                              ),
-                            ],
-                          ),
-                        ],
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: _CalendarCard(
+                        currentMonthStart: _currentMonthStart,
+                        selectedDate: _selectedDate,
+                        tasksByDay: tasksByDay,
+                        monthDays: monthDays,
+                        tasksForDay: tasksForDay,
+                        onChangeMonth: _changeMonth,
+                        onSelectDay: (day) {
+                          setState(() {
+                            _selectedDate = _startOfDay(day);
+                            _currentMonthStart = _startOfMonth(day);
+                          });
+                        },
+                        onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: tasksForDay.isEmpty
-                  ? _EmptyState(selectedDate: _selectedDate)
-                  : ListView.separated(
+            );
+
+            final listCore = tasksForDay.isEmpty
+                ? _EmptyState(selectedDate: _selectedDate)
+                : Scrollbar(
+                    thumbVisibility: isWide,
+                    child: ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: tasksForDay.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final task = tasksForDay[index];
-                        return _TaskTile(task: task, onEdit: () => _openComposer(context, task: task));
+                        return _TaskTile(
+                          task: task,
+                          onEdit: () => _openComposer(context, task: task),
+                        );
                       },
                     ),
-            ),
-          ],
+                  );
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1300),
+                child: isWide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 5, child: calendarSection),
+                          const VerticalDivider(width: 1),
+                          Expanded(
+                            flex: 6,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: listCore,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          calendarSection,
+                          const Divider(height: 1),
+                          Expanded(child: listCore),
+                        ],
+                      ),
+              ),
+            );
+          },
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -213,14 +161,24 @@ class _TaskListScreenState extends State<TaskListScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: TaskFormSheet(
-          task: task,
-          initialDate: initialDate ?? _selectedDate,
-        ),
+      builder: (_) => LayoutBuilder(
+        builder: (context, constraints) {
+          final maxWidth = constraints.maxWidth > 600 ? 520.0 : constraints.maxWidth;
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: TaskFormSheet(
+                  task: task,
+                  initialDate: initialDate ?? _selectedDate,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -262,6 +220,147 @@ class _TaskListScreenState extends State<TaskListScreen> {
       days.addAll(List<DateTime?>.filled(7 - remainder, null));
     }
     return days;
+  }
+}
+
+class _CalendarCard extends StatelessWidget {
+  const _CalendarCard({
+    required this.currentMonthStart,
+    required this.selectedDate,
+    required this.tasksByDay,
+    required this.monthDays,
+    required this.tasksForDay,
+    required this.onChangeMonth,
+    required this.onSelectDay,
+    required this.onAddForDay,
+  });
+
+  final DateTime currentMonthStart;
+  final DateTime selectedDate;
+  final Map<DateTime, List<Task>> tasksByDay;
+  final List<DateTime?> monthDays;
+  final List<Task> tasksForDay;
+  final void Function(int delta) onChangeMonth;
+  final void Function(DateTime day) onSelectDay;
+  final void Function(DateTime day) onAddForDay;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 0,
+      color: Colors.yellow.shade100,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompactWidth = constraints.maxWidth < 420;
+            final aspectRatio = isCompactWidth ? 1.05 : 1.15;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => onChangeMonth(-1),
+                          icon: const Icon(Icons.chevron_left),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        Text(
+                          '${currentMonthStart.year}年 ${currentMonthStart.month}月',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => onChangeMonth(1),
+                          icon: const Icon(Icons.chevron_right),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    Chip(
+                      label: Text('${tasksForDay.length}件'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: const [
+                    Expanded(child: Center(child: Text('日', style: TextStyle(fontSize: 11)))),
+                    Expanded(child: Center(child: Text('月', style: TextStyle(fontSize: 11)))),
+                    Expanded(child: Center(child: Text('火', style: TextStyle(fontSize: 11)))),
+                    Expanded(child: Center(child: Text('水', style: TextStyle(fontSize: 11)))),
+                    Expanded(child: Center(child: Text('木', style: TextStyle(fontSize: 11)))),
+                    Expanded(child: Center(child: Text('金', style: TextStyle(fontSize: 11)))),
+                    Expanded(child: Center(child: Text('土', style: TextStyle(fontSize: 11)))),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    childAspectRatio: aspectRatio,
+                  ),
+                  itemCount: monthDays.length,
+                  itemBuilder: (context, index) {
+                    final day = monthDays[index];
+                    return _DayCell(
+                      date: day,
+                      isSelected: day != null && _isSameDay(day, selectedDate),
+                      onTap: day != null ? () => onSelectDay(day) : null,
+                      onAdd: day != null ? () => onAddForDay(day) : null,
+                      tasks: day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${selectedDate.year}/${selectedDate.month}/${selectedDate.day} のタスク',
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '日付のマスに最大4件のタスクと[+]で合計5枠まで表示されます',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => onAddForDay(selectedDate),
+                      icon: const Icon(Icons.add),
+                      label: const Text('この日に追加'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  DateTime _startOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 }
 
