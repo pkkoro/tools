@@ -13,7 +13,7 @@ class TaskListScreen extends StatefulWidget {
 }
 
 class _TaskListScreenState extends State<TaskListScreen> {
-  static const String _appVersion = 'v0.1.0';
+  static const String _latestPrCreatedAt = 'PR: 2025/12/01 14:39';
 
   late DateTime _selectedDate;
   late DateTime _currentMonthStart;
@@ -36,15 +36,13 @@ class _TaskListScreenState extends State<TaskListScreen> {
     }
 
     final monthDays = _monthDays;
-    final tasksForDay = tasksByDay[_selectedDate] ?? [];
-
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: const [
             Text('タスク管理'),
             SizedBox(width: 8),
-            Chip(label: Text(_appVersion)),
+            Chip(label: Text(_latestPrCreatedAt)),
           ],
         ),
         actions: [
@@ -55,65 +53,43 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ],
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1300),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'メイン画面のカレンダーから日付を選んでタスクを登録',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 520),
-                          child: _CalendarCard(
-                            currentMonthStart: _currentMonthStart,
-                            selectedDate: _selectedDate,
-                            tasksByDay: tasksByDay,
-                            monthDays: monthDays,
-                            tasksForDay: tasksForDay,
-                            onChangeMonth: _changeMonth,
-                            onSelectDay: (day) {
-                              setState(() {
-                                _selectedDate = _startOfDay(day);
-                                _currentMonthStart = _startOfMonth(day);
-                              });
-                            },
-                            onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
-                          ),
+        child: SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1300),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'メイン画面のカレンダーから日付を選んでタスクを登録・編集',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: _CalendarCard(
+                          currentMonthStart: _currentMonthStart,
+                          selectedDate: _selectedDate,
+                          tasksByDay: tasksByDay,
+                          monthDays: monthDays,
+                          onChangeMonth: _changeMonth,
+                          onSelectDay: (day) {
+                            setState(() {
+                              _selectedDate = _startOfDay(day);
+                              _currentMonthStart = _startOfMonth(day);
+                            });
+                          },
+                          onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
+                          onEditTask: _handleEditFromCalendar,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
-                Expanded(
-                  child: tasksForDay.isEmpty
-                      ? _EmptyState(selectedDate: _selectedDate)
-                      : Scrollbar(
-                          thumbVisibility: true,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: tasksForDay.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final task = tasksForDay[index];
-                              return _TaskTile(
-                                task: task,
-                                onEdit: () => _openComposer(context, task: task),
-                              );
-                            },
-                          ),
-                        ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -132,6 +108,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
       _currentMonthStart = _startOfMonth(date);
     });
     _openComposer(context, initialDate: date);
+  }
+
+  void _handleEditFromCalendar(DateTime day, Task task) {
+    final normalized = _startOfDay(day);
+    setState(() {
+      _selectedDate = normalized;
+      _currentMonthStart = _startOfMonth(normalized);
+    });
+    _openComposer(context, task: task, initialDate: task.dueDate ?? normalized);
   }
 
   void _openComposer(BuildContext context, {Task? task, DateTime? initialDate}) {
@@ -206,20 +191,20 @@ class _CalendarCard extends StatelessWidget {
     required this.selectedDate,
     required this.tasksByDay,
     required this.monthDays,
-    required this.tasksForDay,
     required this.onChangeMonth,
     required this.onSelectDay,
     required this.onAddForDay,
+    required this.onEditTask,
   });
 
   final DateTime currentMonthStart;
   final DateTime selectedDate;
   final Map<DateTime, List<Task>> tasksByDay;
   final List<DateTime?> monthDays;
-  final List<Task> tasksForDay;
   final void Function(int delta) onChangeMonth;
   final void Function(DateTime day) onSelectDay;
   final void Function(DateTime day) onAddForDay;
+  final void Function(DateTime day, Task task) onEditTask;
 
   @override
   Widget build(BuildContext context) {
@@ -262,9 +247,7 @@ class _CalendarCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Chip(
-                      label: Text('${tasksForDay.length}件'),
-                    ),
+                    Chip(label: Text('${tasksByDay[selectedDate]?.length ?? 0}件')),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -296,6 +279,12 @@ class _CalendarCard extends StatelessWidget {
                       onTap: day != null ? () => onSelectDay(day) : null,
                       onAdd: day != null ? () => onAddForDay(day) : null,
                       tasks: day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
+                      onEditTask: day != null
+                          ? (task) {
+                              onSelectDay(day);
+                              onEditTask(day, task);
+                            }
+                          : null,
                     );
                   },
                 ),
@@ -312,7 +301,7 @@ class _CalendarCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '日付のマスに最大5件のタスクと[+]を小さな文字で表示します',
+                          '日付のマスに最大5件のタスクと[+]を小さな文字で表示し、タップで編集できます',
                           style: theme.textTheme.bodySmall,
                         ),
                       ],
@@ -348,6 +337,7 @@ class _DayCell extends StatelessWidget {
     this.isSelected = false,
     this.onTap,
     this.onAdd,
+    this.onEditTask,
   });
 
   final DateTime? date;
@@ -355,6 +345,7 @@ class _DayCell extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onAdd;
+  final void Function(Task task)? onEditTask;
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +412,10 @@ class _DayCell extends StatelessWidget {
                     ...visibleTasks.map(
                       (task) => Padding(
                         padding: const EdgeInsets.only(top: 2),
-                        child: _TaskPreviewTile(label: task.title),
+                        child: _TaskPreviewTile(
+                          label: task.title,
+                          onTap: onEditTask != null ? () => onEditTask!(task) : null,
+                        ),
                       ),
                     ),
                     const Spacer(),
@@ -449,28 +443,33 @@ class _DayCell extends StatelessWidget {
 }
 
 class _TaskPreviewTile extends StatelessWidget {
-  const _TaskPreviewTile({required this.label});
+  const _TaskPreviewTile({required this.label, this.onTap});
 
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 36, minHeight: 18, maxWidth: 96),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+          ),
         ),
       ),
     );
@@ -511,130 +510,3 @@ class _AddPreviewTile extends StatelessWidget {
   }
 }
 
-class _TaskTile extends StatelessWidget {
-  const _TaskTile({required this.task, required this.onEdit});
-
-  final Task task;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final taskState = context.read<TaskState>();
-
-    return Dismissible(
-      key: ValueKey(task.id),
-      background: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.centerLeft,
-        child: const Icon(Icons.delete),
-      ),
-      secondaryBackground: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.centerRight,
-        child: const Icon(Icons.delete),
-      ),
-      onDismissed: (_) => taskState.removeTask(task.id),
-      child: ListTile(
-        tileColor: Theme.of(context).colorScheme.surfaceVariant,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        onTap: onEdit,
-        leading: Checkbox(
-          value: task.isCompleted,
-          onChanged: (_) => taskState.toggleComplete(task.id),
-        ),
-        title: Text(
-          task.title,
-          style: task.isCompleted
-              ? const TextStyle(
-                  decoration: TextDecoration.lineThrough,
-                  color: Colors.grey,
-                )
-              : null,
-        ),
-        subtitle: () {
-          final meta = <Widget>[];
-          if (task.dueDate != null) {
-            meta.add(
-              Text(
-                '期限: ${task.dueDate!.year}/${task.dueDate!.month}/${task.dueDate!.day}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            );
-          }
-          if (task.category.isNotEmpty) {
-            meta.add(
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  'カテゴリ: ${task.category}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            );
-          }
-          if (task.notes.isNotEmpty) {
-            meta.add(
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  task.notes,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            );
-          }
-
-          if (meta.isEmpty) return null;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: meta,
-          );
-        }(),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit),
-          onPressed: onEdit,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.selectedDate});
-
-  final DateTime selectedDate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.calendar_today,
-            size: 48,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${selectedDate.month}月${selectedDate.day}日のタスクはありません',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 8),
-          const Text('右下のボタンからタスクを追加してください'),
-        ],
-      ),
-    );
-  }
-}
