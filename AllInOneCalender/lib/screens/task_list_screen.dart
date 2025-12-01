@@ -482,6 +482,17 @@ class _TaskTile extends StatelessWidget {
               ),
             );
           }
+          if (task.category.isNotEmpty) {
+            meta.add(
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'カテゴリ: ${task.category}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            );
+          }
           if (task.notes.isNotEmpty) {
             meta.add(
               Padding(

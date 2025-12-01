@@ -18,6 +18,8 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _notesController;
   DateTime? _dueDate;
+  String _selectedCategory = '';
+  bool _initializedCategory = false;
 
   @override
   void initState() {
@@ -25,6 +27,20 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _notesController = TextEditingController(text: widget.task?.notes ?? '');
     _dueDate = widget.task?.dueDate ?? widget.initialDate;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initializedCategory) return;
+    final categories = context.read<TaskState>().categories;
+    final existing = widget.task?.category;
+    if (existing != null && existing.isNotEmpty) {
+      _selectedCategory = existing;
+    } else if (categories.isNotEmpty) {
+      _selectedCategory = categories.first;
+    }
+    _initializedCategory = true;
   }
 
   @override
@@ -38,6 +54,14 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   Widget build(BuildContext context) {
     final isEditing = widget.task != null;
     final theme = Theme.of(context);
+    final taskState = context.watch<TaskState>();
+    final addCategoryLabel = '＋ カテゴリを追加';
+    final categoryOptions = [
+      ...taskState.categories,
+      if (_selectedCategory.isNotEmpty && !taskState.categories.contains(_selectedCategory))
+        _selectedCategory,
+      addCategoryLabel,
+    ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -74,6 +98,37 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                 labelText: 'メモ',
                 border: OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: categoryOptions.contains(_selectedCategory)
+                  ? _selectedCategory
+                  : (taskState.categories.isNotEmpty ? taskState.categories.first : addCategoryLabel),
+              items: [
+                ...taskState.categories.map(
+                  (c) => DropdownMenuItem(value: c, child: Text(c)),
+                ),
+                const DropdownMenuItem(
+                  value: '＋ カテゴリを追加',
+                  child: Text('＋ カテゴリを追加'),
+                ),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'カテゴリ',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) async {
+                if (value == null) return;
+                if (value == addCategoryLabel) {
+                  final newCategory = await _promptAddCategory();
+                  if (newCategory != null) {
+                    taskState.addCategory(newCategory);
+                    setState(() => _selectedCategory = newCategory);
+                  }
+                } else {
+                  setState(() => _selectedCategory = value);
+                }
+              },
             ),
             const SizedBox(height: 12),
             Row(
@@ -132,12 +187,18 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     final isEditing = widget.task != null;
     final id = widget.task?.id ?? const Uuid().v4();
     final dueDate = _dueDate ?? widget.initialDate ?? DateTime.now();
+    final selectedCategory = _selectedCategory.isNotEmpty
+        ? _selectedCategory
+        : (context.read<TaskState>().categories.isNotEmpty
+            ? context.read<TaskState>().categories.first
+            : '');
 
     final task = Task(
       id: id,
       title: _titleController.text.trim(),
       notes: _notesController.text.trim(),
       dueDate: dueDate,
+      category: selectedCategory,
       isCompleted: widget.task?.isCompleted ?? false,
     );
 
@@ -147,5 +208,38 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       taskState.addTask(task);
     }
     Navigator.pop(context);
+  }
+
+  Future<String?> _promptAddCategory() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('カテゴリを追加'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'カテゴリ名',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('追加'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null || result.isEmpty) return null;
+    return result;
   }
 }

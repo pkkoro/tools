@@ -6,6 +6,7 @@ class Task {
     required this.title,
     this.notes = '',
     this.dueDate,
+    this.category = '',
     this.isCompleted = false,
   });
 
@@ -13,12 +14,14 @@ class Task {
   String title;
   String notes;
   DateTime? dueDate;
+  String category;
   bool isCompleted;
 
   Task copyWith({
     String? title,
     String? notes,
     DateTime? dueDate,
+    String? category,
     bool? isCompleted,
   }) {
     return Task(
@@ -26,6 +29,7 @@ class Task {
       title: title ?? this.title,
       notes: notes ?? this.notes,
       dueDate: dueDate ?? this.dueDate,
+      category: category ?? this.category,
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }
@@ -35,6 +39,7 @@ class Task {
         'title': title,
         'notes': notes,
         'dueDate': dueDate?.toIso8601String(),
+        'category': category,
         'isCompleted': isCompleted,
       };
 
@@ -46,6 +51,7 @@ class Task {
       dueDate: json['dueDate'] != null
           ? DateTime.tryParse(json['dueDate'] as String)
           : null,
+      category: json['category'] as String? ?? '',
       isCompleted: json['isCompleted'] as bool? ?? false,
     );
   }
@@ -53,8 +59,10 @@ class Task {
 
 class TaskState extends ChangeNotifier {
   final List<Task> _tasks = [];
+  final List<String> _categories = ['仕事', 'プライベート'];
 
   List<Task> get tasks => List.unmodifiable(_tasks);
+  List<String> get categories => List.unmodifiable(_categories);
 
   void addTask(Task task) {
     _tasks.insert(0, task);
@@ -73,6 +81,13 @@ class TaskState extends ChangeNotifier {
     final index = _tasks.indexWhere((task) => task.id == updatedTask.id);
     if (index == -1) return;
     _tasks[index] = updatedTask;
+    notifyListeners();
+  }
+
+  void addCategory(String category) {
+    if (category.trim().isEmpty) return;
+    if (_categories.contains(category)) return;
+    _categories.add(category);
     notifyListeners();
   }
 
