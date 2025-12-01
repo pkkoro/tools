@@ -64,15 +64,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
                 children: [
                   Text(
                     'メイン画面のカレンダーから日付を選んでタスクを登録',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                     color: Colors.yellow.shade100,
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -87,7 +87,10 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                   ),
                                   Text(
                                     '${_currentMonthStart.year}年 ${_currentMonthStart.month}月',
-                                    style: Theme.of(context).textTheme.titleMedium,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(fontWeight: FontWeight.w600),
                                   ),
                                   IconButton(
                                     onPressed: () => _changeMonth(1),
@@ -103,16 +106,16 @@ class _TaskListScreenState extends State<TaskListScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: const [
-                              Expanded(child: Center(child: Text('日'))),
-                              Expanded(child: Center(child: Text('月'))),
-                              Expanded(child: Center(child: Text('火'))),
-                              Expanded(child: Center(child: Text('水'))),
-                              Expanded(child: Center(child: Text('木'))),
-                              Expanded(child: Center(child: Text('金'))),
-                              Expanded(child: Center(child: Text('土'))),
+                              Expanded(child: Center(child: Text('日', style: TextStyle(fontSize: 11)))),
+                              Expanded(child: Center(child: Text('月', style: TextStyle(fontSize: 11)))),
+                              Expanded(child: Center(child: Text('火', style: TextStyle(fontSize: 11)))),
+                              Expanded(child: Center(child: Text('水', style: TextStyle(fontSize: 11)))),
+                              Expanded(child: Center(child: Text('木', style: TextStyle(fontSize: 11)))),
+                              Expanded(child: Center(child: Text('金', style: TextStyle(fontSize: 11)))),
+                              Expanded(child: Center(child: Text('土', style: TextStyle(fontSize: 11)))),
                             ],
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -296,8 +299,8 @@ class _DayCell extends StatelessWidget {
         aspectRatio: 1,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(4),
-          padding: const EdgeInsets.all(6),
+          margin: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
             color: isSelected ? Colors.amber.shade200 : Colors.yellow.shade200,
             border: Border.all(
@@ -313,28 +316,28 @@ class _DayCell extends StatelessWidget {
                 children: [
                   Text(
                     '${date!.day}',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
                   if (tasks.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primary.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${tasks.length}',
-                        style: theme.textTheme.labelSmall,
+                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Expanded(
                 child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                  spacing: 4,
+                  runSpacing: 4,
                   children: [
                     ...visibleTasks.map(
                       (task) => _TaskPreviewTile(label: task.title),
@@ -345,10 +348,10 @@ class _DayCell extends StatelessWidget {
               ),
               if (remaining > 0)
                 Padding(
-                  padding: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.only(top: 1),
                   child: Text(
                     '…他${remaining}件',
-                    style: theme.textTheme.labelSmall,
+                    style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
                   ),
                 ),
             ],
@@ -367,9 +370,9 @@ class _TaskPreviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 28, maxWidth: 120),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 24, maxWidth: 100),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
@@ -381,7 +384,7 @@ class _TaskPreviewTile extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
         ),
       ),
     );
@@ -396,12 +399,12 @@ class _AddPreviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 48, minHeight: 28, maxWidth: 120),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 24, maxWidth: 100),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
             borderRadius: BorderRadius.circular(8),
@@ -412,7 +415,7 @@ class _AddPreviewTile extends StatelessWidget {
           child: Center(
             child: Icon(
               Icons.add,
-              size: 16,
+              size: 14,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
