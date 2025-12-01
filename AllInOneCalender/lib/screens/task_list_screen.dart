@@ -68,11 +68,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
                   ),
                   const SizedBox(height: 8),
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                     color: Colors.yellow.shade100,
                     child: Padding(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -84,17 +84,19 @@ class _TaskListScreenState extends State<TaskListScreen> {
                                   IconButton(
                                     onPressed: () => _changeMonth(-1),
                                     icon: const Icon(Icons.chevron_left),
+                                    visualDensity: VisualDensity.compact,
                                   ),
                                   Text(
                                     '${_currentMonthStart.year}年 ${_currentMonthStart.month}月',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleSmall
-                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                        ?.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                                   ),
                                   IconButton(
                                     onPressed: () => _changeMonth(1),
                                     icon: const Icon(Icons.chevron_right),
+                                    visualDensity: VisualDensity.compact,
                                   ),
                                 ],
                               ),
@@ -121,7 +123,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 7,
-                              childAspectRatio: 1,
+                              childAspectRatio: 1.18,
                             ),
                             itemCount: monthDays.length,
                             itemBuilder: (context, index) {
@@ -299,8 +301,8 @@ class _DayCell extends StatelessWidget {
         aspectRatio: 1,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(2),
-          padding: const EdgeInsets.all(5),
+          margin: const EdgeInsets.all(1.5),
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: isSelected ? Colors.amber.shade200 : Colors.yellow.shade200,
             border: Border.all(
@@ -316,7 +318,10 @@ class _DayCell extends StatelessWidget {
                 children: [
                   Text(
                     '${date!.day}',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                   const Spacer(),
                   if (tasks.isNotEmpty)
@@ -336,8 +341,8 @@ class _DayCell extends StatelessWidget {
               const SizedBox(height: 2),
               Expanded(
                 child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
+                  spacing: 3,
+                  runSpacing: 3,
                   children: [
                     ...visibleTasks.map(
                       (task) => _TaskPreviewTile(label: task.title),
@@ -459,6 +464,7 @@ class _TaskTile extends StatelessWidget {
       child: ListTile(
         tileColor: Theme.of(context).colorScheme.surfaceVariant,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        onTap: onEdit,
         leading: Checkbox(
           value: task.isCompleted,
           onChanged: (_) => taskState.toggleComplete(task.id),
