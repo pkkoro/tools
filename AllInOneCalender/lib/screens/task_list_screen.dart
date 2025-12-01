@@ -55,90 +55,67 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ],
       ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 900;
-
-            final calendarSection = Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'メイン画面のカレンダーから日付を選んでタスクを登録',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 520),
-                      child: _CalendarCard(
-                        currentMonthStart: _currentMonthStart,
-                        selectedDate: _selectedDate,
-                        tasksByDay: tasksByDay,
-                        monthDays: monthDays,
-                        tasksForDay: tasksForDay,
-                        onChangeMonth: _changeMonth,
-                        onSelectDay: (day) {
-                          setState(() {
-                            _selectedDate = _startOfDay(day);
-                            _currentMonthStart = _startOfMonth(day);
-                          });
-                        },
-                        onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1300),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'メイン画面のカレンダーから日付を選んでタスクを登録',
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-
-            final listCore = tasksForDay.isEmpty
-                ? _EmptyState(selectedDate: _selectedDate)
-                : Scrollbar(
-                    thumbVisibility: isWide,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: tasksForDay.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final task = tasksForDay[index];
-                        return _TaskTile(
-                          task: task,
-                          onEdit: () => _openComposer(context, task: task),
-                        );
-                      },
-                    ),
-                  );
-
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1300),
-                child: isWide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 5, child: calendarSection),
-                          const VerticalDivider(width: 1),
-                          Expanded(
-                            flex: 6,
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: listCore,
-                            ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 520),
+                          child: _CalendarCard(
+                            currentMonthStart: _currentMonthStart,
+                            selectedDate: _selectedDate,
+                            tasksByDay: tasksByDay,
+                            monthDays: monthDays,
+                            tasksForDay: tasksForDay,
+                            onChangeMonth: _changeMonth,
+                            onSelectDay: (day) {
+                              setState(() {
+                                _selectedDate = _startOfDay(day);
+                                _currentMonthStart = _startOfMonth(day);
+                              });
+                            },
+                            onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
                           ),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          calendarSection,
-                          const Divider(height: 1),
-                          Expanded(child: listCore),
-                        ],
+                        ),
                       ),
-              ),
-            );
-          },
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: tasksForDay.isEmpty
+                      ? _EmptyState(selectedDate: _selectedDate)
+                      : Scrollbar(
+                          thumbVisibility: true,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: tasksForDay.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final task = tasksForDay[index];
+                              return _TaskTile(
+                                task: task,
+                                onEdit: () => _openComposer(context, task: task),
+                              );
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -335,7 +312,7 @@ class _CalendarCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '日付のマスに最大4件のタスクと[+]で合計5枠まで表示されます',
+                          '日付のマスに最大5件のタスクと[+]を小さな文字で表示します',
                           style: theme.textTheme.bodySmall,
                         ),
                       ],
@@ -389,9 +366,8 @@ class _DayCell extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
-    const maxPreviewItems = 5; // include [+]
-    final availableTaskSlots = math.max(0, maxPreviewItems - 1);
-    final visibleTasks = tasks.take(availableTaskSlots).toList();
+    const maxVisibleTasks = 5;
+    final visibleTasks = tasks.take(maxVisibleTasks).toList();
     final remaining = tasks.length - visibleTasks.length;
 
     return GestureDetector(
@@ -439,14 +415,20 @@ class _DayCell extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Expanded(
-                child: Wrap(
-                  spacing: 3,
-                  runSpacing: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ...visibleTasks.map(
-                      (task) => _TaskPreviewTile(label: task.title),
+                      (task) => Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: _TaskPreviewTile(label: task.title),
+                      ),
                     ),
-                    _AddPreviewTile(onTap: onAdd),
+                    const Spacer(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _AddPreviewTile(onTap: onAdd),
+                    ),
                   ],
                 ),
               ),
@@ -474,12 +456,12 @@ class _TaskPreviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 40, minHeight: 24, maxWidth: 100),
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 18, maxWidth: 96),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(7),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
           ),
@@ -488,7 +470,7 @@ class _TaskPreviewTile extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 11),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
         ),
       ),
     );
@@ -503,12 +485,12 @@ class _AddPreviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 40, minHeight: 24, maxWidth: 100),
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 18, maxWidth: 80),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
             borderRadius: BorderRadius.circular(8),
@@ -519,7 +501,7 @@ class _AddPreviewTile extends StatelessWidget {
           child: Center(
             child: Icon(
               Icons.add,
-              size: 14,
+              size: 13,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
