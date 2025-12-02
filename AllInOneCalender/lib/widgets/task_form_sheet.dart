@@ -17,7 +17,8 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _notesController;
-  DateTime? _dueDate;
+  late DateTime _scheduledAt;
+  late TimeOfDay _timeOfDay;
   String _selectedCategory = '';
   bool _initializedCategory = false;
 
@@ -26,7 +27,22 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     super.initState();
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _notesController = TextEditingController(text: widget.task?.notes ?? '');
-    _dueDate = widget.task?.dueDate ?? widget.initialDate;
+    final initialDateTime = widget.task?.scheduledAt ??
+        widget.initialDate ??
+        DateTime.now();
+    _timeOfDay = widget.task != null
+        ? TimeOfDay(
+            hour: widget.task!.scheduledAt.hour,
+            minute: widget.task!.scheduledAt.minute,
+          )
+        : _roundToNearestHalfHour(TimeOfDay.fromDateTime(initialDateTime));
+    _scheduledAt = DateTime(
+      initialDateTime.year,
+      initialDateTime.month,
+      initialDateTime.day,
+      _timeOfDay.hour,
+      _timeOfDay.minute,
+    );
   }
 
   @override
@@ -62,6 +78,19 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
         _selectedCategory,
       addCategoryLabel,
     ];
+
+    final timeOptions = List.generate(
+      48,
+      (index) {
+        final hour = index ~/ 2;
+        final minute = (index % 2) * 30;
+        final display = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+        return DropdownMenuItem<TimeOfDay>(
+          value: TimeOfDay(hour: hour, minute: minute),
+          child: Text(display),
+        );
+      },
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -134,18 +163,36 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    _dueDate == null
-                        ? '期限なし'
-                        : '期限: ${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}',
-                  ),
+                  child: Text('日付: ${_scheduledAt.year}/${_scheduledAt.month}/${_scheduledAt.day}'),
                 ),
                 TextButton.icon(
                   onPressed: _pickDate,
                   icon: const Icon(Icons.calendar_today),
-                  label: const Text('期限を設定'),
+                  label: const Text('日付を変更'),
                 )
               ],
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<TimeOfDay>(
+              value: _timeOfDay,
+              items: timeOptions,
+              decoration: const InputDecoration(
+                labelText: '時刻 (30分刻み)',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _timeOfDay = value;
+                  _scheduledAt = DateTime(
+                    _scheduledAt.year,
+                    _scheduledAt.month,
+                    _scheduledAt.day,
+                    _timeOfDay.hour,
+                    _timeOfDay.minute,
+                  );
+                });
+              },
             ),
             const SizedBox(height: 20),
             Row(
@@ -170,7 +217,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final initialDate = _dueDate ?? now;
+    final initialDate = _scheduledAt;
     final newDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -178,7 +225,15 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       lastDate: DateTime(now.year + 3),
     );
     if (newDate == null) return;
-    setState(() => _dueDate = newDate);
+    setState(() {
+      _scheduledAt = DateTime(
+        newDate.year,
+        newDate.month,
+        newDate.day,
+        _timeOfDay.hour,
+        _timeOfDay.minute,
+      );
+    });
   }
 
   void _submit() {
@@ -186,7 +241,6 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     final taskState = context.read<TaskState>();
     final isEditing = widget.task != null;
     final id = widget.task?.id ?? const Uuid().v4();
-    final dueDate = _dueDate ?? widget.initialDate ?? DateTime.now();
     final selectedCategory = _selectedCategory.isNotEmpty
         ? _selectedCategory
         : (context.read<TaskState>().categories.isNotEmpty
@@ -197,7 +251,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       id: id,
       title: _titleController.text.trim(),
       notes: _notesController.text.trim(),
-      dueDate: dueDate,
+      scheduledAt: _scheduledAt,
       category: selectedCategory,
       isCompleted: widget.task?.isCompleted ?? false,
     );
@@ -241,5 +295,13 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     controller.dispose();
     if (result == null || result.isEmpty) return null;
     return result;
+  }
+
+  TimeOfDay _roundToNearestHalfHour(TimeOfDay time) {
+    final totalMinutes = time.hour * 60 + time.minute;
+    final rounded = (totalMinutes / 30).round() * 30;
+    final hour = (rounded ~/ 60) % 24;
+    final minute = rounded % 60;
+    return TimeOfDay(hour: hour, minute: minute);
   }
 }

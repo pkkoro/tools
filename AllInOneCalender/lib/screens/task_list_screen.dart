@@ -30,8 +30,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
     final tasks = context.watch<TaskState>().tasks;
     final tasksByDay = <DateTime, List<Task>>{};
     for (final task in tasks) {
-      if (task.dueDate == null) continue;
-      final dayKey = _startOfDay(task.dueDate!);
+      final dayKey = _startOfDay(task.scheduledAt);
       tasksByDay.putIfAbsent(dayKey, () => []).add(task);
     }
 
@@ -47,10 +46,10 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_task),
-            onPressed: () => _openComposer(context),
-          )
-        ],
+          icon: const Icon(Icons.add_task),
+          onPressed: () => _openComposer(context),
+        )
+      ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -107,7 +106,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       _selectedDate = date;
       _currentMonthStart = _startOfMonth(date);
     });
-    _openComposer(context, initialDate: date);
+    _openComposer(context, initialDate: _withDefaultTime(date));
   }
 
   void _handleEditFromCalendar(DateTime day, Task task) {
@@ -116,7 +115,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       _selectedDate = normalized;
       _currentMonthStart = _startOfMonth(normalized);
     });
-    _openComposer(context, task: task, initialDate: task.dueDate ?? normalized);
+    _openComposer(context, task: task, initialDate: task.scheduledAt);
   }
 
   void _openComposer(BuildContext context, {Task? task, DateTime? initialDate}) {
@@ -135,7 +134,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                 ),
                 child: TaskFormSheet(
                   task: task,
-                  initialDate: initialDate ?? _selectedDate,
+                  initialDate: initialDate ?? _withDefaultTime(_selectedDate),
                 ),
               ),
             ),
@@ -151,6 +150,15 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   DateTime _startOfDay(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _withDefaultTime(DateTime date) {
+    final now = DateTime.now();
+    final rawMinutes = (now.minute / 30).round() * 30;
+    final minute = rawMinutes % 60;
+    final extraHour = rawMinutes >= 60 ? 1 : 0;
+    final hour = (now.hour + extraHour) % 24;
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   DateTime _startOfMonth(DateTime date) {
@@ -415,7 +423,7 @@ class _DayCell extends StatelessWidget {
                     (task) => Padding(
                       padding: const EdgeInsets.only(top: 3),
                       child: _TaskPreviewTile(
-                        label: task.title,
+                        label: _previewLabel(task),
                         color: _taskColor(task, theme),
                         onTap: onEditTask != null ? () => onEditTask!(task) : null,
                       ),
@@ -453,6 +461,12 @@ class _DayCell extends StatelessWidget {
     ];
     final key = task.category.isNotEmpty ? task.category : task.id;
     return palette[key.hashCode.abs() % palette.length].withOpacity(0.9);
+  }
+
+  String _previewLabel(Task task) {
+    final hour = task.scheduledAt.hour.toString().padLeft(2, '0');
+    final minute = task.scheduledAt.minute.toString().padLeft(2, '0');
+    return '$hour:$minute ${task.title}';
   }
 }
 

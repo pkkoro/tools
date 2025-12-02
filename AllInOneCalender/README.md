@@ -4,7 +4,7 @@ This is a lightweight Flutter prototype for the AllInOneCalendar iOS app focusin
 
 ## Features
 - Calendar-first home screen with a square day grid on a bright yellow background that shows up to five tasks directly in each date cell with tiny, elided labels plus a built-in [+] tile for quick adds, laid out with extra-compact spacing so one full month fits on a single mobile screen.
-- Create tasks with title, optional notes, category selection (choose an existing one or add a new category inline), and an auto-filled due date from the selected calendar day that shows inside the calendar cells.
+- Create tasks with title, optional notes, category selection (choose an existing one or add a new category inline), and a date＋time assignment from the selected calendar day using 30-minute time slots that surface inside the calendar cells.
 - Tap any existing task label inside the calendar to open the pop-up editor for that task, or tap the inline [+] tile to compose a task for that day without leaving the grid.
 - Minimal Material 3 styling suitable for iOS with Cupertino icons available.
 - The app bar shows the latest pull request creation time instead of a static version tag.

@@ -5,7 +5,7 @@ class Task {
     required this.id,
     required this.title,
     this.notes = '',
-    this.dueDate,
+    required this.scheduledAt,
     this.category = '',
     this.isCompleted = false,
   });
@@ -13,14 +13,14 @@ class Task {
   final String id;
   String title;
   String notes;
-  DateTime? dueDate;
+  DateTime scheduledAt;
   String category;
   bool isCompleted;
 
   Task copyWith({
     String? title,
     String? notes,
-    DateTime? dueDate,
+    DateTime? scheduledAt,
     String? category,
     bool? isCompleted,
   }) {
@@ -28,7 +28,7 @@ class Task {
       id: id,
       title: title ?? this.title,
       notes: notes ?? this.notes,
-      dueDate: dueDate ?? this.dueDate,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
       category: category ?? this.category,
       isCompleted: isCompleted ?? this.isCompleted,
     );
@@ -38,7 +38,7 @@ class Task {
         'id': id,
         'title': title,
         'notes': notes,
-        'dueDate': dueDate?.toIso8601String(),
+        'scheduledAt': scheduledAt.toIso8601String(),
         'category': category,
         'isCompleted': isCompleted,
       };
@@ -48,9 +48,8 @@ class Task {
       id: json['id'] as String,
       title: json['title'] as String,
       notes: json['notes'] as String? ?? '',
-      dueDate: json['dueDate'] != null
-          ? DateTime.tryParse(json['dueDate'] as String)
-          : null,
+      scheduledAt: DateTime.tryParse(json['scheduledAt'] as String) ??
+          DateTime.now(),
       category: json['category'] as String? ?? '',
       isCompleted: json['isCompleted'] as bool? ?? false,
     );
