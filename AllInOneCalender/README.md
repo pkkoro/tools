@@ -9,6 +9,7 @@ This is a lightweight Flutter prototype for the AllInOneCalendar iOS app focusin
 - Minimal Material 3 styling suitable for iOS with Cupertino icons available.
 - The app bar shows the latest pull request creation time instead of a static version tag.
 - Single-column layout centered on the calendar grid and pop-up composer, without a separate task list pane beneath the calendar.
+- The calendar grid and day cells keep a fixed aspect ratio so the monthly view and task previews remain visually consistent even when the screen size changes (mobile or Flutter web).
 
 ## Getting Started
 1. Ensure Flutter (3.13+) is installed and an iOS simulator or device is available.

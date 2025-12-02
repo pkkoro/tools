@@ -217,8 +217,8 @@ class _CalendarCard extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isCompactWidth = constraints.maxWidth < 420;
-            final aspectRatio = isCompactWidth ? 1.05 : 1.15;
+            final rows = (monthDays.length / 7).ceil();
+            final gridAspectRatio = 7 / rows;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,30 +263,34 @@ class _CalendarCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    childAspectRatio: aspectRatio,
+                AspectRatio(
+                  aspectRatio: gridAspectRatio,
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 7,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: monthDays.length,
+                    itemBuilder: (context, index) {
+                      final day = monthDays[index];
+                      return _DayCell(
+                        date: day,
+                        isSelected: day != null && _isSameDay(day, selectedDate),
+                        onTap: day != null ? () => onSelectDay(day) : null,
+                        onAdd: day != null ? () => onAddForDay(day) : null,
+                        tasks:
+                            day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
+                        onEditTask: day != null
+                            ? (task) {
+                                onSelectDay(day);
+                                onEditTask(day, task);
+                              }
+                            : null,
+                      );
+                    },
                   ),
-                  itemCount: monthDays.length,
-                  itemBuilder: (context, index) {
-                    final day = monthDays[index];
-                    return _DayCell(
-                      date: day,
-                      isSelected: day != null && _isSameDay(day, selectedDate),
-                      onTap: day != null ? () => onSelectDay(day) : null,
-                      onAdd: day != null ? () => onAddForDay(day) : null,
-                      tasks: day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
-                      onEditTask: day != null
-                          ? (task) {
-                              onSelectDay(day);
-                              onEditTask(day, task);
-                            }
-                          : null,
-                    );
-                  },
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -363,89 +367,100 @@ class _DayCell extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(1.5),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.amber.shade200 : Colors.yellow.shade200,
-            border: Border.all(
-              color: isSelected ? theme.colorScheme.primary : Colors.amber.shade300,
-              width: 1.5,
-            ),
-            borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.all(2.5),
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.amber.shade200 : Colors.yellow.shade200,
+          border: Border.all(
+            color: isSelected ? theme.colorScheme.primary : Colors.amber.shade300,
+            width: 1.5,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '${date!.day}',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const Spacer(),
+                if (tasks.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${tasks.length}',
+                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '${date!.day}',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                  ...visibleTasks.map(
+                    (task) => Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: _TaskPreviewTile(
+                        label: task.title,
+                        color: _taskColor(task, theme),
+                        onTap: onEditTask != null ? () => onEditTask!(task) : null,
+                      ),
                     ),
                   ),
                   const Spacer(),
-                  if (tasks.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${tasks.length}',
-                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
-                      ),
-                    ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _AddPreviewTile(onTap: onAdd),
+                  ),
                 ],
               ),
-              const SizedBox(height: 2),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ...visibleTasks.map(
-                      (task) => Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: _TaskPreviewTile(
-                          label: task.title,
-                          onTap: onEditTask != null ? () => onEditTask!(task) : null,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: _AddPreviewTile(onTap: onAdd),
-                    ),
-                  ],
+            ),
+            if (remaining > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Text(
+                  '…他${remaining}件',
+                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
                 ),
               ),
-              if (remaining > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Text(
-                    '…他${remaining}件',
-                    style: theme.textTheme.labelSmall?.copyWith(fontSize: 10),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
+
+  Color _taskColor(Task task, ThemeData theme) {
+    final palette = [
+      Colors.lightBlue.shade200,
+      Colors.teal.shade200,
+      Colors.pink.shade200,
+      Colors.orange.shade200,
+      Colors.green.shade200,
+    ];
+    final key = task.category.isNotEmpty ? task.category : task.id;
+    return palette[key.hashCode.abs() % palette.length].withOpacity(0.9);
+  }
 }
 
 class _TaskPreviewTile extends StatelessWidget {
-  const _TaskPreviewTile({required this.label, this.onTap});
+  const _TaskPreviewTile({required this.label, required this.color, this.onTap});
 
   final String label;
+  final Color color;
   final VoidCallback? onTap;
 
   @override
@@ -456,19 +471,23 @@ class _TaskPreviewTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(7),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: color,
             borderRadius: BorderRadius.circular(7),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
+              color: color.withOpacity(0.8),
             ),
           ),
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 10,
+                  color: Colors.black.withOpacity(0.85),
+                  height: 1.05,
+                ),
           ),
         ),
       ),
