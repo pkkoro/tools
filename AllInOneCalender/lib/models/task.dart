@@ -96,14 +96,38 @@ class Task {
   List<DateTime> occurrencesBetween(DateTime start, DateTime end) {
     final normalizedStart = DateTime(start.year, start.month, start.day);
     final normalizedEnd = DateTime(end.year, end.month, end.day, 23, 59, 59);
+    final effectiveStartDate = recurrence.startDate ?? scheduledAt;
+    final effectiveEnd = recurrence.endDate;
+    final cappedEnd = effectiveEnd != null && effectiveEnd.isBefore(normalizedEnd)
+        ? DateTime(
+            effectiveEnd.year, effectiveEnd.month, effectiveEnd.day, 23, 59, 59)
+        : normalizedEnd;
+
     final List<DateTime> results = [];
 
-    DateTime next = scheduledAt;
-    if (next.isAfter(normalizedEnd)) return results;
+    DateTime next = DateTime(
+      scheduledAt.year,
+      scheduledAt.month,
+      scheduledAt.day,
+      scheduledAt.hour,
+      scheduledAt.minute,
+    );
+
+    if (next.isBefore(effectiveStartDate)) {
+      next = DateTime(
+        effectiveStartDate.year,
+        effectiveStartDate.month,
+        effectiveStartDate.day,
+        scheduledAt.hour,
+        scheduledAt.minute,
+      );
+    }
+
+    if (next.isAfter(cappedEnd)) return results;
 
     switch (recurrence.type) {
       case RecurrenceType.none:
-        if (!next.isBefore(normalizedStart) && !next.isAfter(normalizedEnd)) {
+        if (!next.isBefore(normalizedStart) && !next.isAfter(cappedEnd)) {
           results.add(next);
         }
         return results;
@@ -114,28 +138,33 @@ class Task {
         break;
       case RecurrenceType.everyNDays:
         final interval = recurrence.intervalDays ?? 1;
-        if (normalizedStart.isBefore(scheduledAt)) {
-          next = scheduledAt;
+        final anchor = DateTime(
+          effectiveStartDate.year,
+          effectiveStartDate.month,
+          effectiveStartDate.day,
+          scheduledAt.hour,
+          scheduledAt.minute,
+        );
+        if (normalizedStart.isBefore(anchor)) {
+          next = anchor;
         } else {
-          final offset = _daysBetween(scheduledAt, normalizedStart);
+          final offset = _daysBetween(anchor, normalizedStart);
           final remainder = offset % interval;
           final daysToAdd = remainder == 0 ? 0 : interval - remainder;
-          next = scheduledAt.add(Duration(days: offset + daysToAdd));
+          next = anchor.add(Duration(days: offset + daysToAdd));
         }
         break;
       case RecurrenceType.weekly:
-        final targetWeekday = recurrence.weekday ?? scheduledAt.weekday;
-        final anchor = normalizedStart.isAfter(scheduledAt)
+        final targetWeekdays = recurrence.weekdays ?? [scheduledAt.weekday];
+        final anchor = normalizedStart.isAfter(effectiveStartDate)
             ? normalizedStart
-            : DateTime(scheduledAt.year, scheduledAt.month, scheduledAt.day);
-        next = _nextWeekdayOnOrAfter(anchor, targetWeekday);
-        if (next.isBefore(scheduledAt)) {
-          next = next.add(const Duration(days: 7));
-        }
+            : DateTime(effectiveStartDate.year, effectiveStartDate.month,
+                effectiveStartDate.day);
+        next = _nextWeekdayOnOrAfter(anchor, targetWeekdays);
         break;
     }
 
-    while (!next.isAfter(normalizedEnd)) {
+    while (!next.isAfter(cappedEnd)) {
       results.add(
         DateTime(next.year, next.month, next.day, scheduledAt.hour,
             scheduledAt.minute),
@@ -151,7 +180,9 @@ class Task {
           next = next.add(Duration(days: recurrence.intervalDays ?? 1));
           break;
         case RecurrenceType.weekly:
-          next = next.add(const Duration(days: 7));
+          next = _nextWeekdayOnOrAfter(
+              next.add(const Duration(days: 1)),
+              recurrence.weekdays ?? [scheduledAt.weekday]);
           break;
       }
     }
@@ -171,9 +202,17 @@ class Task {
     return base.add(Duration(days: steps * intervalDays));
   }
 
-  DateTime _nextWeekdayOnOrAfter(DateTime start, int weekday) {
-    final delta = (weekday - start.weekday + 7) % 7;
-    return start.add(Duration(days: delta));
+  DateTime _nextWeekdayOnOrAfter(DateTime start, List<int> weekdays) {
+    final normalized = weekdays.isEmpty
+        ? [scheduledAt.weekday]
+        : weekdays.map((d) => ((d - 1) % 7) + 1).toList();
+    for (var i = 0; i < 7; i++) {
+      final candidate = start.add(Duration(days: i));
+      if (normalized.contains(candidate.weekday)) {
+        return candidate;
+      }
+    }
+    return start;
   }
 }
 
@@ -183,19 +222,25 @@ class Recurrence {
   const Recurrence({
     required this.type,
     this.intervalDays,
-    this.weekday,
+    this.weekdays,
+    this.startDate,
+    this.endDate,
   });
 
   const Recurrence.none() : this(type: RecurrenceType.none);
 
   final RecurrenceType type;
   final int? intervalDays;
-  final int? weekday;
+  final List<int>? weekdays;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   Map<String, dynamic> toJson() => {
         'type': type.name,
         'intervalDays': intervalDays,
-        'weekday': weekday,
+        'weekdays': weekdays,
+        'startDate': startDate?.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
       };
 
   factory Recurrence.fromJson(Map<String, dynamic>? json) {
@@ -205,10 +250,23 @@ class Recurrence {
       (e) => e.name == typeString,
       orElse: () => RecurrenceType.none,
     );
+    List<int>? parsedWeekdays;
+    if (json['weekdays'] is List) {
+      parsedWeekdays = (json['weekdays'] as List)
+          .whereType<int>()
+          .map((d) => ((d - 1) % 7) + 1)
+          .toList();
+    } else if (json['weekday'] is int) {
+      parsedWeekdays = [((json['weekday'] as int - 1) % 7) + 1];
+    }
+    final start = json['startDate'] as String?;
+    final end = json['endDate'] as String?;
     return Recurrence(
       type: type,
       intervalDays: json['intervalDays'] as int?,
-      weekday: json['weekday'] as int?,
+      weekdays: parsedWeekdays,
+      startDate: start != null ? DateTime.tryParse(start) : null,
+      endDate: end != null ? DateTime.tryParse(end) : null,
     );
   }
 }
