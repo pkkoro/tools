@@ -257,7 +257,8 @@ class Recurrence {
           .map((d) => ((d - 1) % 7) + 1)
           .toList();
     } else if (json['weekday'] is int) {
-      parsedWeekdays = [((json['weekday'] as int - 1) % 7) + 1];
+      final weekday = json['weekday'] as int;
+      parsedWeekdays = [(((weekday) - 1) % 7) + 1];
     }
     final start = json['startDate'] as String?;
     final end = json['endDate'] as String?;

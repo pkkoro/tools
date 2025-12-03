@@ -662,11 +662,13 @@ class _DateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      avatar: const Icon(Icons.event, size: 16),
-      onPressed: onTap,
+    return GestureDetector(
       onLongPress: onClear,
+      child: ActionChip(
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        avatar: const Icon(Icons.event, size: 16),
+        onPressed: onTap,
+      ),
     );
   }
 }
