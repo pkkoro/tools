@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
+import '../widgets/category_palette_sheet.dart';
 import '../widgets/task_form_sheet.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   late DateTime _selectedDate;
   late DateTime _currentMonthStart;
+  bool _showIcons = false;
 
   @override
   void initState() {
@@ -28,6 +30,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
     final tasks = context.watch<TaskState>().tasks;
+    final categoryColors = context.watch<TaskState>().categoryColors;
     final tasksByDay = <DateTime, List<Task>>{};
     for (final task in tasks) {
       final dayKey = _startOfDay(task.scheduledAt);
@@ -46,10 +49,20 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ),
         actions: [
           IconButton(
-          icon: const Icon(Icons.add_task),
-          onPressed: () => _openComposer(context),
-        )
-      ],
+            tooltip: _showIcons ? 'タイトル表示に切り替え' : 'アイコン表示に切り替え',
+            icon: Icon(_showIcons ? Icons.title : Icons.tag_faces_outlined),
+            onPressed: () => setState(() => _showIcons = !_showIcons),
+          ),
+          IconButton(
+            tooltip: 'カテゴリカラー設定',
+            icon: const Icon(Icons.palette_outlined),
+            onPressed: () => _openCategoryPalette(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_task),
+            onPressed: () => _openComposer(context),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -73,6 +86,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
                           currentMonthStart: _currentMonthStart,
                           selectedDate: _selectedDate,
                           tasksByDay: tasksByDay,
+                          categoryColors: categoryColors,
+                          showIcons: _showIcons,
                           monthDays: monthDays,
                           onChangeMonth: _changeMonth,
                           onSelectDay: (day) {
@@ -116,6 +131,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
       _currentMonthStart = _startOfMonth(normalized);
     });
     _openComposer(context, task: task, initialDate: task.scheduledAt);
+  }
+
+  void _openCategoryPalette(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const CategoryPaletteSheet(),
+    );
   }
 
   void _openComposer(BuildContext context, {Task? task, DateTime? initialDate}) {
@@ -198,6 +221,8 @@ class _CalendarCard extends StatelessWidget {
     required this.currentMonthStart,
     required this.selectedDate,
     required this.tasksByDay,
+    required this.categoryColors,
+    required this.showIcons,
     required this.monthDays,
     required this.onChangeMonth,
     required this.onSelectDay,
@@ -208,6 +233,8 @@ class _CalendarCard extends StatelessWidget {
   final DateTime currentMonthStart;
   final DateTime selectedDate;
   final Map<DateTime, List<Task>> tasksByDay;
+  final Map<String, Color> categoryColors;
+  final bool showIcons;
   final List<DateTime?> monthDays;
   final void Function(int delta) onChangeMonth;
   final void Function(DateTime day) onSelectDay;
@@ -290,6 +317,8 @@ class _CalendarCard extends StatelessWidget {
                         onAdd: day != null ? () => onAddForDay(day) : null,
                         tasks:
                             day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
+                        categoryColors: categoryColors,
+                        showIcons: showIcons,
                         onEditTask: day != null
                             ? (task) {
                                 onSelectDay(day);
@@ -346,6 +375,8 @@ class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.date,
     required this.tasks,
+    required this.categoryColors,
+    required this.showIcons,
     this.isSelected = false,
     this.onTap,
     this.onAdd,
@@ -354,6 +385,8 @@ class _DayCell extends StatelessWidget {
 
   final DateTime? date;
   final List<Task> tasks;
+  final Map<String, Color> categoryColors;
+  final bool showIcons;
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onAdd;
@@ -423,7 +456,10 @@ class _DayCell extends StatelessWidget {
                     (task) => Padding(
                       padding: const EdgeInsets.only(top: 3),
                       child: _TaskPreviewTile(
-                        label: _previewLabel(task),
+                        label: showIcons ? null : _previewLabel(task),
+                        timeLabel: _timeLabel(task),
+                        icon:
+                            showIcons ? (task.icon ?? Icons.task_alt_outlined) : null,
                         color: _taskColor(task, theme),
                         onTap: onEditTask != null ? () => onEditTask!(task) : null,
                       ),
@@ -452,15 +488,10 @@ class _DayCell extends StatelessWidget {
   }
 
   Color _taskColor(Task task, ThemeData theme) {
-    final palette = [
-      Colors.lightBlue.shade200,
-      Colors.teal.shade200,
-      Colors.pink.shade200,
-      Colors.orange.shade200,
-      Colors.green.shade200,
-    ];
     final key = task.category.isNotEmpty ? task.category : task.id;
-    return palette[key.hashCode.abs() % palette.length].withOpacity(0.9);
+    final resolved =
+        key.isNotEmpty ? categoryColors[key] ?? theme.primaryColorLight : null;
+    return (resolved ?? Colors.lightBlue.shade200).withOpacity(0.9);
   }
 
   String _previewLabel(Task task) {
@@ -468,19 +499,33 @@ class _DayCell extends StatelessWidget {
     final minute = task.scheduledAt.minute.toString().padLeft(2, '0');
     return '$hour:$minute ${task.title}';
   }
+
+  String _timeLabel(Task task) {
+    final hour = task.scheduledAt.hour.toString().padLeft(2, '0');
+    final minute = task.scheduledAt.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
 }
 
 class _TaskPreviewTile extends StatelessWidget {
-  const _TaskPreviewTile({required this.label, required this.color, this.onTap});
+  const _TaskPreviewTile({
+    required this.color,
+    required this.timeLabel,
+    this.label,
+    this.icon,
+    this.onTap,
+  });
 
-  final String label;
+  final String? label;
+  final String timeLabel;
+  final IconData? icon;
   final Color color;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 18, maxWidth: 96),
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 18, maxWidth: 104),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(7),
@@ -493,15 +538,37 @@ class _TaskPreviewTile extends StatelessWidget {
               color: color.withOpacity(0.8),
             ),
           ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: 10,
-                  color: Colors.black.withOpacity(0.85),
-                  height: 1.05,
-                ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                timeLabel,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      color: Colors.black.withOpacity(0.78),
+                    ),
+              ),
+              const SizedBox(width: 3),
+              if (label != null)
+                Flexible(
+                  child: Text(
+                    label!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                          color: Colors.black.withOpacity(0.85),
+                          height: 1.05,
+                        ),
+                  ),
+                )
+              else if (icon != null)
+                Icon(
+                  icon,
+                  size: 14,
+                  color: Colors.black.withOpacity(0.8),
+                )
+            ],
           ),
         ),
       ),

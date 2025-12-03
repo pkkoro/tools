@@ -21,6 +21,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   late TimeOfDay _timeOfDay;
   String _selectedCategory = '';
   bool _initializedCategory = false;
+  IconData? _selectedIcon;
 
   @override
   void initState() {
@@ -30,6 +31,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     final initialDateTime = widget.task?.scheduledAt ??
         widget.initialDate ??
         DateTime.now();
+    _selectedIcon = widget.task?.icon;
     _timeOfDay = widget.task != null
         ? TimeOfDay(
             hour: widget.task!.scheduledAt.hour,
@@ -92,6 +94,21 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       },
     );
 
+    final iconOptions = <IconData>[
+      Icons.work_outline,
+      Icons.home_outlined,
+      Icons.school,
+      Icons.fitness_center,
+      Icons.shopping_bag_outlined,
+      Icons.emoji_events_outlined,
+      Icons.coffee_outlined,
+      Icons.flight_takeoff,
+      Icons.medical_services_outlined,
+      Icons.music_note,
+      Icons.sports_esports,
+      Icons.lightbulb_outline,
+    ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
       child: Form(
@@ -127,6 +144,44 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                 labelText: 'メモ',
                 border: OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<IconData?>(
+              value: _selectedIcon,
+              items: [
+                const DropdownMenuItem<IconData?>(
+                  value: null,
+                  child: Text('アイコンなし'),
+                ),
+                ...iconOptions.map(
+                  (icon) => DropdownMenuItem<IconData?>(
+                    value: icon,
+                    child: Row(
+                      children: [
+                        Icon(icon, size: 18),
+                        const SizedBox(width: 6),
+                        Text(_iconLabel(icon)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_selectedIcon != null && !iconOptions.contains(_selectedIcon))
+                  DropdownMenuItem<IconData?>(
+                    value: _selectedIcon,
+                    child: Row(
+                      children: [
+                        Icon(_selectedIcon, size: 18),
+                        const SizedBox(width: 6),
+                        const Text('カスタムアイコン'),
+                      ],
+                    ),
+                  ),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'アイコン',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) => setState(() => _selectedIcon = value),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
@@ -253,6 +308,9 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       notes: _notesController.text.trim(),
       scheduledAt: _scheduledAt,
       category: selectedCategory,
+      iconCodePoint: _selectedIcon?.codePoint,
+      iconFontFamily: _selectedIcon?.fontFamily,
+      iconFontPackage: _selectedIcon?.fontPackage,
       isCompleted: widget.task?.isCompleted ?? false,
     );
 
@@ -295,6 +353,22 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     controller.dispose();
     if (result == null || result.isEmpty) return null;
     return result;
+  }
+
+  String _iconLabel(IconData icon) {
+    if (icon == Icons.work_outline) return '仕事';
+    if (icon == Icons.home_outlined) return 'プライベート';
+    if (icon == Icons.school) return '学習';
+    if (icon == Icons.fitness_center) return '運動';
+    if (icon == Icons.shopping_bag_outlined) return '買い物';
+    if (icon == Icons.emoji_events_outlined) return 'イベント';
+    if (icon == Icons.coffee_outlined) return 'カフェ';
+    if (icon == Icons.flight_takeoff) return '旅行';
+    if (icon == Icons.medical_services_outlined) return '通院';
+    if (icon == Icons.music_note) return '音楽';
+    if (icon == Icons.sports_esports) return 'ゲーム';
+    if (icon == Icons.lightbulb_outline) return 'アイデア';
+    return 'アイコン';
   }
 
   TimeOfDay _roundToNearestHalfHour(TimeOfDay time) {
