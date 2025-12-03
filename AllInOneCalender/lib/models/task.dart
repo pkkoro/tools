@@ -10,7 +10,7 @@ class Task {
     this.iconCodePoint,
     this.iconFontFamily,
     this.iconFontPackage,
-    this.recurrence = Recurrence.none,
+    this.recurrence = const Recurrence.none(),
     this.isCompleted = false,
   });
 
@@ -186,11 +186,11 @@ class Recurrence {
     this.weekday,
   });
 
+  const Recurrence.none() : this(type: RecurrenceType.none);
+
   final RecurrenceType type;
   final int? intervalDays;
   final int? weekday;
-
-  factory Recurrence.none() => const Recurrence(type: RecurrenceType.none);
 
   Map<String, dynamic> toJson() => {
         'type': type.name,
