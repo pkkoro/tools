@@ -17,21 +17,30 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _notesController;
+  late final TextEditingController _intervalDaysController;
   late DateTime _scheduledAt;
   late TimeOfDay _timeOfDay;
   String _selectedCategory = '';
   bool _initializedCategory = false;
   IconData? _selectedIcon;
+  late RecurrenceType _recurrenceType;
+  int _intervalDays = 2;
+  int _weeklyWeekday = DateTime.now().weekday;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _notesController = TextEditingController(text: widget.task?.notes ?? '');
+    _intervalDaysController =
+        TextEditingController(text: (widget.task?.recurrence.intervalDays ?? 2).toString());
     final initialDateTime = widget.task?.scheduledAt ??
         widget.initialDate ??
         DateTime.now();
     _selectedIcon = widget.task?.icon;
+    _recurrenceType = widget.task?.recurrence.type ?? RecurrenceType.none;
+    _intervalDays = widget.task?.recurrence.intervalDays ?? _intervalDays;
+    _weeklyWeekday = widget.task?.recurrence.weekday ?? initialDateTime.weekday;
     _timeOfDay = widget.task != null
         ? TimeOfDay(
             hour: widget.task!.scheduledAt.hour,
@@ -65,6 +74,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   void dispose() {
     _titleController.dispose();
     _notesController.dispose();
+    _intervalDaysController.dispose();
     super.dispose();
   }
 
@@ -249,6 +259,15 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                 });
               },
             ),
+            const SizedBox(height: 12),
+            _RecurrenceSection(
+              recurrenceType: _recurrenceType,
+              intervalDaysController: _intervalDaysController,
+              weeklyWeekday: _weeklyWeekday,
+              onTypeChanged: (type) => setState(() => _recurrenceType = type),
+              onIntervalChanged: (value) => setState(() => _intervalDays = value),
+              onWeekdayChanged: (value) => setState(() => _weeklyWeekday = value),
+            ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -302,6 +321,30 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
             ? context.read<TaskState>().categories.first
             : '');
 
+    Recurrence recurrence;
+    switch (_recurrenceType) {
+      case RecurrenceType.daily:
+        recurrence = const Recurrence(type: RecurrenceType.daily);
+        break;
+      case RecurrenceType.everyNDays:
+        final parsed = int.tryParse(_intervalDaysController.text);
+        final interval = parsed != null && parsed > 0 ? parsed : _intervalDays;
+        recurrence = Recurrence(
+          type: RecurrenceType.everyNDays,
+          intervalDays: interval,
+        );
+        break;
+      case RecurrenceType.weekly:
+        recurrence = Recurrence(
+          type: RecurrenceType.weekly,
+          weekday: _weeklyWeekday,
+        );
+        break;
+      case RecurrenceType.none:
+      default:
+        recurrence = Recurrence.none();
+    }
+
     final task = Task(
       id: id,
       title: _titleController.text.trim(),
@@ -311,6 +354,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       iconCodePoint: _selectedIcon?.codePoint,
       iconFontFamily: _selectedIcon?.fontFamily,
       iconFontPackage: _selectedIcon?.fontPackage,
+      recurrence: recurrence,
       isCompleted: widget.task?.isCompleted ?? false,
     );
 
@@ -377,5 +421,105 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     final hour = (rounded ~/ 60) % 24;
     final minute = rounded % 60;
     return TimeOfDay(hour: hour, minute: minute);
+  }
+}
+
+class _RecurrenceSection extends StatelessWidget {
+  const _RecurrenceSection({
+    required this.recurrenceType,
+    required this.intervalDaysController,
+    required this.weeklyWeekday,
+    required this.onTypeChanged,
+    required this.onIntervalChanged,
+    required this.onWeekdayChanged,
+  });
+
+  final RecurrenceType recurrenceType;
+  final TextEditingController intervalDaysController;
+  final int weeklyWeekday;
+  final ValueChanged<RecurrenceType> onTypeChanged;
+  final ValueChanged<int> onIntervalChanged;
+  final ValueChanged<int> onWeekdayChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dayLabels = const ['月', '火', '水', '木', '金', '土', '日'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('繰り返し設定', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<RecurrenceType>(
+          value: recurrenceType,
+          decoration: const InputDecoration(
+            labelText: '頻度',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: RecurrenceType.none,
+              child: Text('なし'),
+            ),
+            DropdownMenuItem(
+              value: RecurrenceType.daily,
+              child: Text('毎日'),
+            ),
+            DropdownMenuItem(
+              value: RecurrenceType.everyNDays,
+              child: Text('何日毎'),
+            ),
+            DropdownMenuItem(
+              value: RecurrenceType.weekly,
+              child: Text('毎週（曜日指定）'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            onTypeChanged(value);
+          },
+        ),
+        const SizedBox(height: 10),
+        if (recurrenceType == RecurrenceType.everyNDays)
+          TextFormField(
+            controller: intervalDaysController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: '何日ごとに繰り返すか',
+              suffixText: '日',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              final parsed = int.tryParse(value);
+              if (parsed != null && parsed > 0) {
+                onIntervalChanged(parsed);
+              }
+            },
+          ),
+        if (recurrenceType == RecurrenceType.weekly)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('曜日を選択', style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(7, (index) {
+                  final weekday = index + 1;
+                  final label = dayLabels[index];
+                  final isSelected = weeklyWeekday == weekday;
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: isSelected,
+                    onSelected: (_) => onWeekdayChanged(weekday),
+                  );
+                }),
+              ),
+            ],
+          ),
+      ],
+    );
   }
 }

@@ -32,9 +32,21 @@ class _TaskListScreenState extends State<TaskListScreen> {
     final tasks = context.watch<TaskState>().tasks;
     final categoryColors = context.watch<TaskState>().categoryColors;
     final tasksByDay = <DateTime, List<Task>>{};
+    final monthStart = _currentMonthStart;
+    final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 0);
+
     for (final task in tasks) {
-      final dayKey = _startOfDay(task.scheduledAt);
-      tasksByDay.putIfAbsent(dayKey, () => []).add(task);
+      final occurrences = task.occurrencesBetween(monthStart, monthEnd);
+      for (final occurrence in occurrences) {
+        final dayKey = _startOfDay(occurrence);
+        tasksByDay.putIfAbsent(dayKey, () => []).add(
+              task.copyWith(scheduledAt: occurrence),
+            );
+      }
+    }
+
+    for (final entry in tasksByDay.entries) {
+      entry.value.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     }
 
     final monthDays = _monthDays;
