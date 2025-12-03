@@ -19,6 +19,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
   late DateTime _selectedDate;
   late DateTime _currentMonthStart;
   bool _showIcons = false;
+  bool _showTime = true;
+  bool _showTitle = true;
 
   @override
   void initState() {
@@ -50,20 +52,44 @@ class _TaskListScreenState extends State<TaskListScreen> {
     }
 
     final monthDays = _monthDays;
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: const [
-            Text('タスク管理'),
-            SizedBox(width: 8),
-            Chip(label: Text(_latestPrCreatedAt)),
+        titleSpacing: 12,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('タスク管理'),
+            Text(
+              _latestPrCreatedAt,
+              style: theme.textTheme.labelSmall,
+            ),
           ],
         ),
         actions: [
           IconButton(
             tooltip: _showIcons ? 'タイトル表示に切り替え' : 'アイコン表示に切り替え',
-            icon: Icon(_showIcons ? Icons.title : Icons.tag_faces_outlined),
+            icon: Icon(
+              _showIcons ? Icons.title : Icons.tag_faces_outlined,
+              color: _showIcons ? theme.colorScheme.primary : null,
+            ),
             onPressed: () => setState(() => _showIcons = !_showIcons),
+          ),
+          IconButton(
+            tooltip: _showTime ? '時間を隠す' : '時間を表示',
+            icon: Icon(
+              Icons.schedule,
+              color: _showTime ? theme.colorScheme.primary : null,
+            ),
+            onPressed: () => setState(() => _showTime = !_showTime),
+          ),
+          IconButton(
+            tooltip: _showTitle ? 'タイトルを隠す' : 'タイトルを表示',
+            icon: Icon(
+              Icons.text_fields,
+              color: _showTitle ? theme.colorScheme.primary : null,
+            ),
+            onPressed: () => setState(() => _showTitle = !_showTitle),
           ),
           IconButton(
             tooltip: 'カテゴリカラー設定',
@@ -77,44 +103,29 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1300),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'メイン画面のカレンダーから日付を選んでタスクを登録・編集',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: _CalendarCard(
-                          currentMonthStart: _currentMonthStart,
-                          selectedDate: _selectedDate,
-                          tasksByDay: tasksByDay,
-                          categoryColors: categoryColors,
-                          showIcons: _showIcons,
-                          monthDays: monthDays,
-                          onChangeMonth: _changeMonth,
-                          onSelectDay: (day) {
-                            setState(() {
-                              _selectedDate = _startOfDay(day);
-                              _currentMonthStart = _startOfMonth(day);
-                            });
-                          },
-                          onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
-                          onEditTask: _handleEditFromCalendar,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: _CalendarCard(
+                currentMonthStart: _currentMonthStart,
+                selectedDate: _selectedDate,
+                tasksByDay: tasksByDay,
+                categoryColors: categoryColors,
+                showIcons: _showIcons,
+                showTime: _showTime,
+                showTitle: _showTitle,
+                monthDays: monthDays,
+                onChangeMonth: _changeMonth,
+                onSelectDay: (day) {
+                  setState(() {
+                    _selectedDate = _startOfDay(day);
+                    _currentMonthStart = _startOfMonth(day);
+                  });
+                },
+                onAddForDay: (day) => _openComposerForDay(context, _startOfDay(day)),
+                onEditTask: _handleEditFromCalendar,
               ),
             ),
           ),
@@ -235,6 +246,8 @@ class _CalendarCard extends StatelessWidget {
     required this.tasksByDay,
     required this.categoryColors,
     required this.showIcons,
+    required this.showTime,
+    required this.showTitle,
     required this.monthDays,
     required this.onChangeMonth,
     required this.onSelectDay,
@@ -247,6 +260,8 @@ class _CalendarCard extends StatelessWidget {
   final Map<DateTime, List<Task>> tasksByDay;
   final Map<String, Color> categoryColors;
   final bool showIcons;
+  final bool showTime;
+  final bool showTitle;
   final List<DateTime?> monthDays;
   final void Function(int delta) onChangeMonth;
   final void Function(DateTime day) onSelectDay;
@@ -294,10 +309,13 @@ class _CalendarCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    Chip(label: Text('${tasksByDay[selectedDate]?.length ?? 0}件')),
+                    Text(
+                      '${tasksByDay[selectedDate]?.length ?? 0}件',
+                      style: theme.textTheme.labelSmall,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Row(
                   children: const [
                     Expanded(child: Center(child: Text('日', style: TextStyle(fontSize: 11)))),
@@ -331,6 +349,8 @@ class _CalendarCard extends StatelessWidget {
                             day != null ? (tasksByDay[_startOfDay(day)] ?? []) : const [],
                         categoryColors: categoryColors,
                         showIcons: showIcons,
+                        showTime: showTime,
+                        showTitle: showTitle,
                         onEditTask: day != null
                             ? (task) {
                                 onSelectDay(day);
@@ -340,31 +360,6 @@ class _CalendarCard extends StatelessWidget {
                       );
                     },
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${selectedDate.year}/${selectedDate.month}/${selectedDate.day} のタスク',
-                          style: theme.textTheme.bodyLarge,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '日付のマスに最大5件のタスクと[+]を小さな文字で表示し、タップで編集できます',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                    FilledButton.tonalIcon(
-                      onPressed: () => onAddForDay(selectedDate),
-                      icon: const Icon(Icons.add),
-                      label: const Text('この日に追加'),
-                    ),
-                  ],
                 ),
               ],
             );
@@ -389,6 +384,8 @@ class _DayCell extends StatelessWidget {
     required this.tasks,
     required this.categoryColors,
     required this.showIcons,
+    required this.showTime,
+    required this.showTitle,
     this.isSelected = false,
     this.onTap,
     this.onAdd,
@@ -399,6 +396,8 @@ class _DayCell extends StatelessWidget {
   final List<Task> tasks;
   final Map<String, Color> categoryColors;
   final bool showIcons;
+  final bool showTime;
+  final bool showTitle;
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onAdd;
@@ -468,10 +467,9 @@ class _DayCell extends StatelessWidget {
                     (task) => Padding(
                       padding: const EdgeInsets.only(top: 3),
                       child: _TaskPreviewTile(
-                        label: showIcons ? null : _previewLabel(task),
-                        timeLabel: _timeLabel(task),
-                        icon:
-                            showIcons ? (task.icon ?? Icons.task_alt_outlined) : null,
+                        label: showTitle ? _previewLabel(task) : null,
+                        timeLabel: showTime ? _timeLabel(task) : null,
+                        icon: showIcons ? (task.icon ?? Icons.task_alt_outlined) : null,
                         color: _taskColor(task, theme),
                         onTap: onEditTask != null ? () => onEditTask!(task) : null,
                       ),
@@ -507,9 +505,7 @@ class _DayCell extends StatelessWidget {
   }
 
   String _previewLabel(Task task) {
-    final hour = task.scheduledAt.hour.toString().padLeft(2, '0');
-    final minute = task.scheduledAt.minute.toString().padLeft(2, '0');
-    return '$hour:$minute ${task.title}';
+    return task.title;
   }
 
   String _timeLabel(Task task) {
@@ -522,22 +518,27 @@ class _DayCell extends StatelessWidget {
 class _TaskPreviewTile extends StatelessWidget {
   const _TaskPreviewTile({
     required this.color,
-    required this.timeLabel,
+    this.timeLabel,
     this.label,
     this.icon,
     this.onTap,
   });
 
   final String? label;
-  final String timeLabel;
+  final String? timeLabel;
   final IconData? icon;
   final Color color;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final showClock = timeLabel != null && timeLabel!.isNotEmpty;
+    final showText = label != null && label!.isNotEmpty;
+    final showIcon = icon != null;
+    final hasContent = showClock || showText || showIcon;
+
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 18, maxWidth: 104),
+      constraints: const BoxConstraints(minWidth: 36, minHeight: 18, maxWidth: 150),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(7),
@@ -553,15 +554,24 @@ class _TaskPreviewTile extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                timeLabel,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      color: Colors.black.withOpacity(0.78),
-                    ),
-              ),
-              const SizedBox(width: 3),
-              if (label != null)
+              if (showIcon) ...[
+                Icon(
+                  icon,
+                  size: 14,
+                  color: Colors.black.withOpacity(0.8),
+                ),
+                if (showClock || showText) const SizedBox(width: 3),
+              ],
+              if (showClock)
+                Text(
+                  timeLabel!,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        color: Colors.black.withOpacity(0.78),
+                      ),
+                ),
+              if (showClock && showText) const SizedBox(width: 3),
+              if (showText)
                 Flexible(
                   child: Text(
                     label!,
@@ -573,13 +583,15 @@ class _TaskPreviewTile extends StatelessWidget {
                           height: 1.05,
                         ),
                   ),
-                )
-              else if (icon != null)
-                Icon(
-                  icon,
-                  size: 14,
-                  color: Colors.black.withOpacity(0.8),
-                )
+                ),
+              if (!hasContent)
+                Text(
+                  '…',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        color: Colors.black.withOpacity(0.7),
+                      ),
+                ),
             ],
           ),
         ),
